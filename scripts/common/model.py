@@ -34,6 +34,21 @@ _TARGET_REQUIRED_FIELDS = {
 _TARGET_OPTIONAL_FIELDS = {"minimumOsVersion"}
 _PROFILES = {"lgpl", "gpl"}
 _DESKTOP_PLATFORMS = {"windows", "macos", "linux"}
+_KNOWN_TARGETS = {
+    "windows-x64-msvc": {
+        "id": "windows-x64-msvc", "platform": "windows",
+        "architecture": "x86_64", "abi": "msvc",
+        "toolchain": "vs2022-msvc", "linkage": "shared",
+        "packageFormat": "zip", "driver": "windows",
+    },
+    "macos-arm64": {
+        "id": "macos-arm64", "platform": "macos",
+        "architecture": "arm64", "abi": "darwin",
+        "toolchain": "xcode-clang", "minimumOsVersion": "12.0",
+        "linkage": "shared", "packageFormat": "tar.xz",
+        "driver": "macos",
+    },
+}
 
 
 def _object_without_duplicates(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
@@ -108,6 +123,10 @@ def load_target(path: Path) -> dict[str, object]:
         raise ValueError("FFmpeg target has unknown fields")
     if any(type(value[field]) is not str or not value[field] for field in fields):
         raise ValueError("FFmpeg target fields must be nonempty strings")
+    if value["linkage"] not in {"shared", "static"}:
+        raise ValueError("FFmpeg target linkage is invalid")
+    if value["packageFormat"] not in {"zip", "tar.xz"}:
+        raise ValueError("FFmpeg target package format is invalid")
 
     platform = value["platform"]
     if platform in _DESKTOP_PLATFORMS and value["linkage"] != "shared":
@@ -117,6 +136,9 @@ def load_target(path: Path) -> dict[str, object]:
             raise ValueError("macOS FFmpeg target must use arm64")
         if value.get("minimumOsVersion") != "12.0":
             raise ValueError("macOS FFmpeg deployment target must be 12.0")
+    known = _KNOWN_TARGETS.get(value["id"])
+    if known is not None and value != known:
+        raise ValueError("known FFmpeg target identity has drifted")
     return json.loads(json.dumps(value))
 
 
@@ -152,13 +174,14 @@ def compose_configure_args(
         repo_root / "config" / "profiles" / f"{profile}.conf"
     )
     arguments = common + specific
-    if len(arguments) != len(set(arguments)):
+    option_keys = tuple(argument.split("=", 1)[0] for argument in arguments)
+    if len(option_keys) != len(set(option_keys)):
         raise ValueError("duplicate FFmpeg configure argument")
-    if "--enable-nonfree" in arguments:
+    if any("nonfree" in argument.lower() for argument in arguments):
         raise ValueError("nonfree FFmpeg builds are prohibited")
-    if profile == "lgpl" and "--enable-gpl" in arguments:
+    if profile == "lgpl" and "--enable-gpl" in option_keys:
         raise ValueError("LGPL profile cannot enable GPL")
-    if profile == "gpl" and arguments.count("--enable-gpl") != 1:
+    if profile == "gpl" and option_keys.count("--enable-gpl") != 1:
         raise ValueError("GPL profile must enable GPL exactly once")
     return arguments
 

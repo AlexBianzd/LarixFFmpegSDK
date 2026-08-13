@@ -109,6 +109,9 @@ class TargetLoadingTests(unittest.TestCase):
             ("macos unsupported architecture", {"architecture": "x86_64"}),
             ("macos unsupported deployment", {"minimumOsVersion": "13.0"}),
             ("boolean identifier", {"id": True}),
+            ("invalid linkage", {"linkage": "dynamic"}),
+            ("invalid package format", {"packageFormat": "7z"}),
+            ("known target drift", {"architecture": "arm64"}),
         )
 
         for name, replacement in cases:
@@ -157,6 +160,9 @@ class ConfigureCompositionTests(unittest.TestCase):
 
     def test_rejects_duplicate_configure_arguments(self) -> None:
         self.assert_profile_rejected("lgpl", "--disable-autodetect\n")
+        self.assert_profile_rejected(
+            "gpl", "--enable-gpl\n--extra-cflags=-O2\n--extra-cflags=-O3\n"
+        )
 
     def test_rejects_blank_or_comment_profile_arguments(self) -> None:
         self.assert_profile_rejected("gpl", "\n--enable-gpl\n")
@@ -164,7 +170,9 @@ class ConfigureCompositionTests(unittest.TestCase):
 
     def test_rejects_nonfree_and_gpl_incompatible_profiles(self) -> None:
         self.assert_profile_rejected("lgpl", "--enable-gpl\n")
+        self.assert_profile_rejected("lgpl", "--enable-gpl=yes\n")
         self.assert_profile_rejected("gpl", "--enable-nonfree\n")
+        self.assert_profile_rejected("gpl", "--enable-gpl\n--foo=nonfree\n")
 
     def test_rejects_unrecognized_profile_or_target(self) -> None:
         with self.assertRaises(ValueError):
