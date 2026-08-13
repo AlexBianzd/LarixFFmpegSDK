@@ -1,0 +1,10 @@
+{
+  "id": "windows-x64-msvc",
+  "platform": "windows",
+  "architecture": "x86_64",
+  "abi": "msvc",
+  "toolchain": "vs2022-msvc",
+  "linkage": "shared",
+  "packageFormat": "zip",
+  "driver": "windows"
+}

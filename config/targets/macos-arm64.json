@@ -1,0 +1,11 @@
+{
+  "id": "macos-arm64",
+  "platform": "macos",
+  "architecture": "arm64",
+  "abi": "darwin",
+  "toolchain": "xcode-clang",
+  "minimumOsVersion": "12.0",
+  "linkage": "shared",
+  "packageFormat": "tar.xz",
+  "driver": "macos"
+}

@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "platform",
+    "architecture",
+    "abi",
+    "toolchain",
+    "linkage",
+    "packageFormat",
+    "driver"
+  ],
+  "properties": {
+    "id": { "type": "string", "minLength": 1 },
+    "platform": { "type": "string", "minLength": 1 },
+    "architecture": { "type": "string", "minLength": 1 },
+    "abi": { "type": "string", "minLength": 1 },
+    "toolchain": { "type": "string", "minLength": 1 },
+    "linkage": { "enum": ["shared", "static"] },
+    "packageFormat": { "enum": ["zip", "tar.xz"] },
+    "driver": { "type": "string", "minLength": 1 },
+    "minimumOsVersion": { "type": "string", "minLength": 1 }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "platform": { "enum": ["windows", "macos", "linux"] }
+        }
+      },
+      "then": {
+        "properties": {
+          "linkage": { "const": "shared" }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "platform": { "const": "macos" }
+        }
+      },
+      "then": {
+        "required": ["minimumOsVersion"],
+        "properties": {
+          "architecture": { "const": "arm64" },
+          "minimumOsVersion": { "const": "12.0" }
+        }
+      }
+    }
+  ]
+}
