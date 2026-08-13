@@ -1,0 +1,42 @@
+# Repository build, staging, download, and extracted-source outputs
+build/
+build-*/
+out/
+dist/
+artifacts/
+downloads/
+source/
+.worktrees/
+.superpowers/sdd/
+
+# CMake-generated artifacts that occasionally leak outside build directories
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+CTestTestfile.cmake
+compile_commands.json
+
+# Python caches and local environments
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+
+# Apple, Android, and IDE local state
+DerivedData/
+.gradle/
+.vscode/
+.idea/
+*.user
+*.swp
+*~
+.DS_Store
+
+# Local configure overrides and signing material
+CMakeUserPresets.json
+*.keystore
+*.p12
+*.pfx
