@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "upstreamVersion": "9.0.1",
+  "packagingRevision": 1,
+  "releaseTag": "ffmpeg-9.0.1-larix.1",
+  "source": {
+    "url": "https://ffmpeg.org/releases/ffmpeg-9.0.1.tar.xz",
+    "archive": "ffmpeg-9.0.1.tar.xz",
+    "size": 12036420,
+    "sha256": "cf38e0e28c7e5605942c4a77755349b0145804a397af37eb1fb4c77cb237f635"
+  },
+  "profiles": [
+    "lgpl",
+    "gpl"
+  ]
+}

@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "upstreamVersion",
+    "packagingRevision",
+    "releaseTag",
+    "source",
+    "profiles"
+  ],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "upstreamVersion": { "const": "9.0.1" },
+    "packagingRevision": { "type": "integer", "const": 1, "minimum": 1 },
+    "releaseTag": { "const": "ffmpeg-9.0.1-larix.1" },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["url", "archive", "size", "sha256"],
+      "properties": {
+        "url": {
+          "type": "string",
+          "pattern": "^https://"
+        },
+        "archive": { "const": "ffmpeg-9.0.1.tar.xz" },
+        "size": { "type": "integer", "minimum": 1 },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      }
+    },
+    "profiles": {
+      "type": "array",
+      "items": { "enum": ["lgpl", "gpl"] },
+      "uniqueItems": true,
+      "minItems": 2,
+      "maxItems": 2,
+      "allOf": [
+        { "contains": { "const": "lgpl" } },
+        { "contains": { "const": "gpl" } }
+      ]
+    }
+  }
+}
