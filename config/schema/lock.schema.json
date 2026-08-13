@@ -32,16 +32,6 @@
         }
       }
     },
-    "profiles": {
-      "type": "array",
-      "items": { "enum": ["lgpl", "gpl"] },
-      "uniqueItems": true,
-      "minItems": 2,
-      "maxItems": 2,
-      "allOf": [
-        { "contains": { "const": "lgpl" } },
-        { "contains": { "const": "gpl" } }
-      ]
-    }
+    "profiles": { "const": ["lgpl", "gpl"] }
   }
 }

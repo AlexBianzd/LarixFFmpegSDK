@@ -34,7 +34,38 @@ class LoadLockTests(unittest.TestCase):
     def test_returns_a_freshly_owned_result(self) -> None:
         first = load_lock(LOCK_PATH)
         first["profiles"].append("mutation")
+        first["source"]["url"] = "mutation"
         self.assertEqual(load_lock(LOCK_PATH), EXPECTED)
+
+    def test_rejects_duplicate_json_members_at_every_object_depth(self) -> None:
+        top_level = LOCK_PATH.read_text(encoding="utf-8").replace(
+            '"schemaVersion": 1,',
+            '"schemaVersion": 2, "schemaVersion": 1,',
+            1,
+        )
+        nested = LOCK_PATH.read_text(encoding="utf-8").replace(
+            '"size": 12036420,',
+            '"size": 1, "size": 12036420,',
+            1,
+        )
+
+        self.assert_raw_rejected(top_level)
+        self.assert_raw_rejected(nested)
+
+    def test_rejects_boolean_integer_substitutions(self) -> None:
+        for field in ("schemaVersion", "packagingRevision"):
+            with self.subTest(field=field):
+                candidate = copy.deepcopy(EXPECTED)
+                candidate[field] = True
+                self.assert_rejected(candidate)
+
+    def test_schema_freezes_the_exact_profile_order(self) -> None:
+        schema = json.loads(
+            (REPOSITORY_ROOT / "config" / "schema" / "lock.schema.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        self.assertEqual(schema["properties"]["profiles"], {"const": ["lgpl", "gpl"]})
 
     def test_rejects_invalid_lock_contracts(self) -> None:
         rejected = [
@@ -60,9 +91,12 @@ class LoadLockTests(unittest.TestCase):
         self.assert_rejected(missing_size)
 
     def assert_rejected(self, candidate: dict[str, object]) -> None:
+        self.assert_raw_rejected(json.dumps(candidate))
+
+    def assert_raw_rejected(self, content: str) -> None:
         with tempfile.TemporaryDirectory() as temp_directory:
             path = Path(temp_directory) / "ffmpeg.lock.json"
-            path.write_text(json.dumps(candidate), encoding="utf-8")
+            path.write_text(content, encoding="utf-8")
             with self.assertRaises(ValueError):
                 load_lock(path)
 
