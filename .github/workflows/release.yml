@@ -1,0 +1,110 @@
+name: Publish SDK Release
+
+on:
+  push:
+    tags:
+      - ffmpeg-9.0.1-larix.1
+
+permissions:
+  contents: read
+
+jobs:
+  windows-sdk:
+    runs-on: windows-2022
+    timeout-minutes: 240
+    strategy:
+      fail-fast: false
+      matrix:
+        profile: [lgpl, gpl]
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.13'
+      - uses: msys2/setup-msys2@66cd2cce69caa17b53920067426061ca1de3a884
+        id: msys2
+        with:
+          msystem: MSYS
+          release: false
+          update: false
+          install: make diffutils
+      - name: Install hash-verified NASM 3.02
+        shell: powershell
+        run: |
+          $url = 'https://www.nasm.us/pub/nasm/releasebuilds/3.02/win64/nasm-3.02-installer-x64.exe'
+          $expected = '0DDB40310861EB29F4D649FEB9466779982A2D251C0DB2B9CF0D21CF591171F3'
+          $installer = Join-Path $env:RUNNER_TEMP 'nasm-3.02-installer-x64.exe'
+          Invoke-WebRequest -UseBasicParsing -Uri $url -OutFile $installer
+          $observed = (Get-FileHash -Algorithm SHA256 -LiteralPath $installer).Hash
+          if ($observed -ne $expected) { throw "NASM SHA-256 mismatch: $observed" }
+          $process = Start-Process -FilePath $installer -ArgumentList '/S' -Wait -PassThru
+          if ($process.ExitCode -ne 0) { throw "NASM install failed: $($process.ExitCode)" }
+      - name: Build and verify Windows SDK
+        shell: powershell
+        env:
+          LARIX_MSYS2_BASH: ${{ steps.msys2.outputs.msys2-location }}/usr/bin/bash.exe
+          LARIX_MSYS2_MAKE: ${{ steps.msys2.outputs.msys2-location }}/usr/bin/make.exe
+          LARIX_MSYS2_CMP: ${{ steps.msys2.outputs.msys2-location }}/usr/bin/cmp.exe
+        run: ./scripts/build-windows.ps1 -Profile ${{ matrix.profile }} -Configuration Release -OutputRoot build/windows-${{ matrix.profile }}
+      - uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4
+        with:
+          name: sdk-windows-${{ matrix.profile }}
+          path: build/windows-${{ matrix.profile }}/package/*.zip
+          if-no-files-found: error
+          retention-days: 1
+
+  macos-sdk:
+    runs-on: macos-15
+    timeout-minutes: 240
+    strategy:
+      fail-fast: false
+      matrix:
+        profile: [lgpl, gpl]
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.13'
+      - name: Build and verify macOS arm64 SDK
+        run: ./scripts/build-macos.sh --profile ${{ matrix.profile }} --configuration Release --output-root build/macos-${{ matrix.profile }}
+      - uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4
+        with:
+          name: sdk-macos-${{ matrix.profile }}
+          path: build/macos-${{ matrix.profile }}/package/*.tar.xz
+          if-no-files-found: error
+          retention-days: 1
+
+  publish:
+    needs: [windows-sdk, macos-sdk]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.13'
+      - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0
+        with:
+          pattern: sdk-*
+          path: build/release-candidate
+          merge-multiple: true
+      - name: Assemble and verify exact release catalog
+        run: >-
+          python -m scripts.common.verify_release
+          --asset-directory build/release-candidate
+          --tag ffmpeg-9.0.1-larix.1
+          --download-source --assemble
+      - name: Publish immutable public Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            echo "Release already exists; asset replacement is prohibited." >&2
+            exit 1
+          fi
+          gh release create "$GITHUB_REF_NAME" build/release-candidate/* \
+            --repo "$GITHUB_REPOSITORY" --verify-tag \
+            --title "Larix FFmpeg SDK 9.0.1 revision 1" \
+            --notes "Verified LGPL/GPL SDKs for Windows x64 MSVC and macOS arm64 (minimum macOS 12.0)."

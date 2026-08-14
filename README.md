@@ -77,3 +77,20 @@ gh run watch --repo AlexBianzd/LarixFFmpegSDK --exit-status
 The workflow has read-only repository permissions, uses SHA-pinned official
 GitHub actions, and retains intermediate SDK archives for one day. It does not
 use larger, paid, or self-hosted runners and does not publish release assets.
+
+## Immutable releases
+
+The exact tag `ffmpeg-9.0.1-larix.1` builds all four target/profile SDKs again
+on standard public runners. Only the final aggregation job receives
+`contents: write`; build jobs remain read-only. The public Release contains the
+four SDK archives, the hash-locked official FFmpeg source archive, a canonical
+`release-catalog.json`, and top-level `SHA256SUMS`. Existing releases or assets
+are never overwritten; a correction requires a new packaging revision.
+
+Anyone can verify the Release without GitHub credentials:
+
+```bash
+python -m scripts.common.verify_release \
+  --github-release AlexBianzd/LarixFFmpegSDK@ffmpeg-9.0.1-larix.1 \
+  --anonymous
+```
