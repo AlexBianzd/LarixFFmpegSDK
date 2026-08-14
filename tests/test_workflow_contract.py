@@ -25,9 +25,9 @@ class WorkflowPolicyContractTests(unittest.TestCase):
 
     def test_permissions_and_runner_labels_are_free_public_runner_only(self) -> None:
         self.assertRegex(self.source, r"(?ms)^permissions:\s*\n  contents: read\s*$")
-        self.assertIn("runs-on: ubuntu-24.04", self.source)
         self.assertIn("runs-on: windows-2022", self.source)
         self.assertIn("runs-on: macos-15", self.source)
+        self.assertNotIn("runs-on: ubuntu-24.04", self.source)
         lowered = self.source.lower()
         for forbidden in (
             "self-hosted",
@@ -70,9 +70,30 @@ class WorkflowPolicyContractTests(unittest.TestCase):
             self.source.index("  macos-sdk:"),
         )
         fast_job = self.source[fast_start:full_start]
+        self.assertIn("runs-on: windows-2022", fast_job)
         self.assertNotIn("upload-artifact", fast_job)
         self.assertNotIn("build-windows.ps1", fast_job)
         self.assertNotIn("build-macos.sh", fast_job)
+
+    def test_windows_job_installs_hash_verified_official_nasm(self) -> None:
+        windows_start = self.source.index("  windows-sdk:")
+        macos_start = self.source.index("  macos-sdk:")
+        windows_job = self.source[windows_start:macos_start]
+        self.assertIn(
+            "https://www.nasm.us/pub/nasm/releasebuilds/3.02/win64/"
+            "nasm-3.02-installer-x64.exe",
+            windows_job,
+        )
+        self.assertIn(
+            "0DDB40310861EB29F4D649FEB9466779982A2D251C0DB2B9CF0D21CF591171F3",
+            windows_job,
+        )
+        self.assertIn("Get-FileHash", windows_job)
+        self.assertIn("Start-Process", windows_job)
+        self.assertLess(
+            windows_job.index("Get-FileHash"),
+            windows_job.index("scripts/build-windows.ps1"),
+        )
 
 
 if __name__ == "__main__":

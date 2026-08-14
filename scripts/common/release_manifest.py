@@ -338,22 +338,28 @@ def _normalize_dependencies(
 
 
 def _scan_forbidden_paths(root: Path, forbidden_paths: tuple[str, ...]) -> None:
-    byte_needles: list[bytes] = []
-    text_needles: set[str] = set()
+    byte_needles: list[tuple[bytes, str]] = []
+    text_needles: list[tuple[str, str]] = []
     for value in forbidden_paths:
         if not isinstance(value, str) or not value:
             raise ValueError("forbidden build path is invalid")
         variants = {value, value.replace("\\", "/"), value.replace("/", "\\")}
         for item in variants:
             if item:
-                byte_needles.extend((item.encode("utf-8"), item.encode("utf-16le")))
-                text_needles.add(item.casefold())
+                byte_needles.extend((
+                    (item.encode("utf-8"), value),
+                    (item.encode("utf-16le"), value),
+                ))
+                text_needles.append((item.casefold(), value))
     for path in _walk_regular_files(root, include_generated=True):
         if path.name in _GENERATED_METADATA:
             continue
         payload = path.read_bytes()
-        if any(needle in payload for needle in byte_needles):
-            raise ValueError(f"SDK payload embeds a build or source path: {path}")
+        for needle, forbidden in byte_needles:
+            if needle in payload:
+                raise ValueError(
+                    f"SDK payload embeds forbidden path {forbidden}: {path}"
+                )
         decoded = [payload.decode("utf-8", errors="ignore")]
         for offset in (0, 1):
             even_length = (len(payload) - offset) & ~1
@@ -362,12 +368,13 @@ def _scan_forbidden_paths(root: Path, forbidden_paths: tuple[str, ...]) -> None:
                     "utf-16le", errors="ignore"
                 )
             )
-        if any(
-            needle in text.casefold()
-            for text in decoded
-            for needle in text_needles
-        ):
-            raise ValueError(f"SDK payload embeds a build or source path: {path}")
+        for text in decoded:
+            folded = text.casefold()
+            for needle, forbidden in text_needles:
+                if needle in folded:
+                    raise ValueError(
+                        f"SDK payload embeds forbidden path {forbidden}: {path}"
+                    )
 
 
 def _validate_payload_contract(

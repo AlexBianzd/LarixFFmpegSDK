@@ -15,7 +15,7 @@ permissions:
 
 jobs:
   fast-tests:
-    runs-on: ubuntu-24.04
+    runs-on: windows-2022
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
@@ -38,6 +38,21 @@ jobs:
       - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
         with:
           python-version: '3.13'
+      - name: Install hash-verified NASM 3.02
+        shell: powershell
+        run: |
+          $url = 'https://www.nasm.us/pub/nasm/releasebuilds/3.02/win64/nasm-3.02-installer-x64.exe'
+          $expected = '0DDB40310861EB29F4D649FEB9466779982A2D251C0DB2B9CF0D21CF591171F3'
+          $installer = Join-Path $env:RUNNER_TEMP 'nasm-3.02-installer-x64.exe'
+          Invoke-WebRequest -UseBasicParsing -Uri $url -OutFile $installer
+          $observed = (Get-FileHash -Algorithm SHA256 -LiteralPath $installer).Hash
+          if ($observed -ne $expected) {
+            throw "NASM installer SHA-256 mismatch: $observed"
+          }
+          $process = Start-Process -FilePath $installer -ArgumentList '/S' -Wait -PassThru
+          if ($process.ExitCode -ne 0) {
+            throw "NASM installer failed: $($process.ExitCode)"
+          }
       - name: Build and verify Windows SDK
         shell: powershell
         run: ./scripts/build-windows.ps1 -Profile ${{ matrix.profile }} -Configuration Release -OutputRoot build/windows-${{ matrix.profile }}

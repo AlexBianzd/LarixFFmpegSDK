@@ -36,8 +36,9 @@ class ReleaseContractReviewTests(unittest.TestCase):
         forbidden = r"C:\Build\Secret"
         mixed_case = r"c:\bUILD\sECRET\source.c"
         payload.write_bytes(mixed_case.encode("utf-8"))
-        with self.assertRaises(ValueError):
+        with self.assertRaises(ValueError) as captured:
             _scan_forbidden_paths(root, (forbidden,))
+        self.assertIn(forbidden, str(captured.exception))
         payload.write_bytes(mixed_case.encode("utf-16le"))
         with self.assertRaises(ValueError):
             _scan_forbidden_paths(root, (forbidden,))
