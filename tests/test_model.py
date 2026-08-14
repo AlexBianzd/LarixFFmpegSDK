@@ -12,6 +12,7 @@ from scripts.common.model import (
     load_target,
     target_asset_name,
 )
+from scripts.common.release_manifest import _FORBIDDEN_COMPONENT_MARKERS
 
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
@@ -28,7 +29,6 @@ COMMON_ARGS = (
     "--enable-ffprobe",
     "--disable-avfilter",
     "--disable-avdevice",
-    "--disable-postproc",
     "--disable-stripping",
 )
 
@@ -137,6 +137,13 @@ class TargetLoadingTests(unittest.TestCase):
 
 
 class ConfigureCompositionTests(unittest.TestCase):
+    def test_ffmpeg_9_excludes_obsolete_postproc_option_but_package_policy_remains(self) -> None:
+        arguments = compose_configure_args(
+            REPOSITORY_ROOT, "lgpl", "windows-x64-msvc"
+        )
+        self.assertNotIn("--disable-postproc", arguments)
+        self.assertIn("postproc", _FORBIDDEN_COMPONENT_MARKERS)
+
     def test_composes_profiles_in_a_deterministic_order(self) -> None:
         lgpl = compose_configure_args(REPOSITORY_ROOT, "lgpl", "windows-x64-msvc")
         gpl = compose_configure_args(REPOSITORY_ROOT, "gpl", "windows-x64-msvc")

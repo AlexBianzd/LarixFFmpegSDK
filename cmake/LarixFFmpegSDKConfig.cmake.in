@@ -1,0 +1,39 @@
+if(NOT WIN32)
+  message(FATAL_ERROR "This Larix FFmpeg SDK package targets Windows x64 MSVC")
+endif()
+if(NOT MSVC OR NOT CMAKE_SIZEOF_VOID_P EQUAL 8)
+  message(FATAL_ERROR "This Larix FFmpeg SDK package requires Windows x64 MSVC")
+endif()
+
+get_filename_component(_larix_ffmpeg_prefix "${CMAKE_CURRENT_LIST_DIR}/../../.." ABSOLUTE)
+set(_larix_ffmpeg_components avutil avcodec avformat swresample swscale)
+set(_larix_ffmpeg_dll_versions 61 63 63 7 10)
+list(LENGTH _larix_ffmpeg_components _larix_ffmpeg_count)
+math(EXPR _larix_ffmpeg_last "${_larix_ffmpeg_count} - 1")
+foreach(_index RANGE 0 ${_larix_ffmpeg_last})
+  list(GET _larix_ffmpeg_components ${_index} _component)
+  list(GET _larix_ffmpeg_dll_versions ${_index} _version)
+  set(_implib "${_larix_ffmpeg_prefix}/lib/${_component}.lib")
+  set(_runtime "${_larix_ffmpeg_prefix}/bin/${_component}-${_version}.dll")
+  if(NOT EXISTS "${_implib}" OR NOT EXISTS "${_runtime}")
+    message(FATAL_ERROR "Larix FFmpeg SDK component is incomplete: ${_component}")
+  endif()
+  if(NOT TARGET LarixFFmpegSDK::${_component})
+    add_library(LarixFFmpegSDK::${_component} SHARED IMPORTED)
+    set_target_properties(LarixFFmpegSDK::${_component} PROPERTIES
+      IMPORTED_IMPLIB "${_implib}"
+      IMPORTED_LOCATION "${_runtime}"
+      INTERFACE_INCLUDE_DIRECTORIES "${_larix_ffmpeg_prefix}/include")
+  endif()
+endforeach()
+set_property(TARGET LarixFFmpegSDK::avcodec APPEND PROPERTY
+  INTERFACE_LINK_LIBRARIES LarixFFmpegSDK::avutil)
+set_property(TARGET LarixFFmpegSDK::avformat APPEND PROPERTY
+  INTERFACE_LINK_LIBRARIES "LarixFFmpegSDK::avcodec;LarixFFmpegSDK::avutil")
+set_property(TARGET LarixFFmpegSDK::swresample APPEND PROPERTY
+  INTERFACE_LINK_LIBRARIES LarixFFmpegSDK::avutil)
+set_property(TARGET LarixFFmpegSDK::swscale APPEND PROPERTY
+  INTERFACE_LINK_LIBRARIES LarixFFmpegSDK::avutil)
+unset(_larix_ffmpeg_prefix)
+unset(_implib)
+unset(_runtime)

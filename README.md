@@ -1,7 +1,7 @@
 # Larix FFmpeg SDK
 
-> **Pre-release:** This repository is being prepared for reproducible Larix
-> FFmpeg SDK builds. It does not yet publish SDK binaries or a formal release.
+> **Pre-release:** The reproducible build and verification tooling is under
+> active development. No formal SDK release has been published yet.
 
 LarixFFmpegSDK pins the official FFmpeg source identity and will own the
 reproducible build, verification, packaging, and publication process for the
@@ -17,3 +17,27 @@ The exact approved FFmpeg archive is recorded in
 [`config/ffmpeg.lock.json`](config/ffmpeg.lock.json). Consumers must treat the
 lock as fail-closed: its URL, archive name, size, SHA-256, release identity,
 and license profiles must all match exactly.
+
+## Windows x64 MSVC build
+
+```powershell
+./scripts/build-windows.ps1 -Profile lgpl -Configuration Release -OutputRoot build/windows-lgpl
+./scripts/build-windows.ps1 -Profile gpl -Configuration Release -OutputRoot build/windows-gpl
+```
+
+Use `-Profile gpl` for the explicit GPL profile. The driver requires Visual
+Studio 2022 C++ tools, NASM, MSYS2 Bash, GNU make and diffutils, CMake 3.25 or newer, and
+Python 3.12 or newer. It never downloads or installs tools. Optional
+`LARIX_NASM`, `LARIX_MSYS2_BASH`, `LARIX_MSYS2_MAKE`, `LARIX_CMAKE`, and
+`LARIX_PYTHON` variables may point to existing installations.
+
+Each ZIP contains shared `avutil`, `avcodec`, `avformat`, `swresample`, and
+`swscale` libraries, `ffprobe.exe`, public headers, MSVC import libraries,
+relocatable `LarixFFmpegSDK::*` CMake targets, license/source provenance,
+profile-correct FFmpeg license texts, PDB symbols, canonical metadata, an
+SPDX 2.3 SBOM, and `SHA256SUMS`. Packaging and
+verification reject undeclared files, static libraries, forbidden FFmpeg
+components, unsafe archive paths, and MSYS2/MinGW runtime dependencies.
+Release manifests record stable SOURCE, BUILD, INSTALL, and OUTPUT aliases;
+the Windows driver substitutes actual paths only for compilation so local
+machine paths do not enter release provenance.

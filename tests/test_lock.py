@@ -24,6 +24,13 @@ EXPECTED = {
         "sha256": "cf38e0e28c7e5605942c4a77755349b0145804a397af37eb1fb4c77cb237f635",
     },
     "profiles": ["lgpl", "gpl"],
+    "libraryVersions": {
+        "avutil": 61,
+        "avcodec": 63,
+        "avformat": 63,
+        "swresample": 7,
+        "swscale": 10,
+    },
 }
 
 
@@ -66,6 +73,10 @@ class LoadLockTests(unittest.TestCase):
             )
         )
         self.assertEqual(schema["properties"]["profiles"], {"const": ["lgpl", "gpl"]})
+        self.assertEqual(
+            schema["properties"]["libraryVersions"]["const"],
+            EXPECTED["libraryVersions"],
+        )
 
     def test_rejects_invalid_lock_contracts(self) -> None:
         rejected = [

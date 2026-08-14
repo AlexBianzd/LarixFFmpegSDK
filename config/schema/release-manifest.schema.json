@@ -1,0 +1,125 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "assetName": {"type": "string"},
+    "components": {"items": {"type": "string"}, "type": "array"},
+    "configureArgs": {"items": {"type": "string"}, "type": "array"},
+    "effectiveLicense": {"enum": ["LGPL-2.1-or-later", "GPL-2.0-or-later"]},
+    "files": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "path": {"type": "string"},
+          "sha256": {"pattern": "^[0-9a-f]{64}$", "type": "string"},
+          "size": {"minimum": 0, "type": "integer"}
+        },
+        "required": ["path", "sha256", "size"],
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "libraryVersions": {
+      "additionalProperties": false,
+      "properties": {
+        "avcodec": {"type": "integer"},
+        "avformat": {"type": "integer"},
+        "avutil": {"type": "integer"},
+        "swresample": {"type": "integer"},
+        "swscale": {"type": "integer"}
+      },
+      "required": ["avcodec", "avformat", "avutil", "swresample", "swscale"],
+      "type": "object"
+    },
+    "licenseProfile": {"enum": ["lgpl", "gpl"]},
+    "packageFormat": {"const": "zip"},
+    "packagingRevision": {"const": 1},
+    "patches": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "path": {"type": "string"},
+          "sha256": {"pattern": "^[0-9a-f]{64}$", "type": "string"}
+        },
+        "required": ["path", "sha256"],
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "releaseTag": {"const": "ffmpeg-9.0.1-larix.1"},
+    "runtimeDependencies": {
+      "additionalProperties": false,
+      "properties": {
+        "bin/avcodec-63.dll": {"items": {"type": "string"}, "type": "array"},
+        "bin/avformat-63.dll": {"items": {"type": "string"}, "type": "array"},
+        "bin/avutil-61.dll": {"items": {"type": "string"}, "type": "array"},
+        "bin/ffprobe.exe": {"items": {"type": "string"}, "type": "array"},
+        "bin/swresample-7.dll": {"items": {"type": "string"}, "type": "array"},
+        "bin/swscale-10.dll": {"items": {"type": "string"}, "type": "array"}
+      },
+      "required": ["bin/avcodec-63.dll", "bin/avformat-63.dll", "bin/avutil-61.dll", "bin/ffprobe.exe", "bin/swresample-7.dll", "bin/swscale-10.dll"],
+      "type": "object"
+    },
+    "runtimeFiles": {"items": {"type": "string"}, "type": "array"},
+    "schemaVersion": {"const": 1},
+    "source": {
+      "additionalProperties": false,
+      "properties": {
+        "archive": {"type": "string"},
+        "sha256": {"pattern": "^[0-9a-f]{64}$", "type": "string"},
+        "size": {"minimum": 1, "type": "integer"},
+        "url": {"pattern": "^https://", "type": "string"}
+      },
+      "required": ["archive", "sha256", "size", "url"],
+      "type": "object"
+    },
+    "symbols": {"items": {"type": "string"}, "type": "array"},
+    "target": {
+      "additionalProperties": false,
+      "properties": {
+        "abi": {"type": "string"},
+        "architecture": {"type": "string"},
+        "driver": {"type": "string"},
+        "id": {"type": "string"},
+        "linkage": {"type": "string"},
+        "packageFormat": {"type": "string"},
+        "platform": {"type": "string"},
+        "toolchain": {"type": "string"}
+      },
+      "required": ["abi", "architecture", "driver", "id", "linkage", "packageFormat", "platform", "toolchain"],
+      "type": "object"
+    },
+    "toolchain": {
+      "additionalProperties": false,
+      "properties": {
+        "compiler": {"type": "string"},
+        "windowsSdk": {"type": "string"}
+      },
+      "required": ["compiler", "windowsSdk"],
+      "type": "object"
+    },
+    "upstreamVersion": {"const": "9.0.1"}
+  },
+  "required": [
+    "assetName",
+    "components",
+    "configureArgs",
+    "effectiveLicense",
+    "files",
+    "libraryVersions",
+    "licenseProfile",
+    "packageFormat",
+    "packagingRevision",
+    "patches",
+    "releaseTag",
+    "runtimeDependencies",
+    "runtimeFiles",
+    "schemaVersion",
+    "source",
+    "symbols",
+    "target",
+    "toolchain",
+    "upstreamVersion"
+  ],
+  "type": "object"
+}

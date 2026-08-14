@@ -8,7 +8,8 @@
     "packagingRevision",
     "releaseTag",
     "source",
-    "profiles"
+    "profiles",
+    "libraryVersions"
   ],
   "properties": {
     "schemaVersion": { "const": 1 },
@@ -32,6 +33,15 @@
         }
       }
     },
-    "profiles": { "const": ["lgpl", "gpl"] }
+    "profiles": { "const": ["lgpl", "gpl"] },
+    "libraryVersions": {
+      "const": {
+        "avutil": 61,
+        "avcodec": 63,
+        "avformat": 63,
+        "swresample": 7,
+        "swscale": 10
+      }
+    }
   }
 }

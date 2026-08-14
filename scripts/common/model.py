@@ -19,6 +19,13 @@ _EXPECTED = {
         "sha256": "cf38e0e28c7e5605942c4a77755349b0145804a397af37eb1fb4c77cb237f635",
     },
     "profiles": ["lgpl", "gpl"],
+    "libraryVersions": {
+        "avutil": 61,
+        "avcodec": 63,
+        "avformat": 63,
+        "swresample": 7,
+        "swscale": 10,
+    },
 }
 
 _TARGET_REQUIRED_FIELDS = {
@@ -96,6 +103,8 @@ def load_lock(path: Path) -> dict[str, object]:
     profiles = value["profiles"]
     if profiles != _EXPECTED["profiles"]:
         raise ValueError("FFmpeg lock profiles are invalid")
+    if value["libraryVersions"] != _EXPECTED["libraryVersions"]:
+        raise ValueError("FFmpeg lock library versions are invalid")
 
     return json.loads(json.dumps(value))
 

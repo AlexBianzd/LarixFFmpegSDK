@@ -12,5 +12,12 @@
   "profiles": [
     "lgpl",
     "gpl"
-  ]
+  ],
+  "libraryVersions": {
+    "avutil": 61,
+    "avcodec": 63,
+    "avformat": 63,
+    "swresample": 7,
+    "swscale": 10
+  }
 }

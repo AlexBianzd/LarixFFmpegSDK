@@ -1,0 +1,15 @@
+cmake_minimum_required(VERSION 3.25)
+project(LarixFFmpegSDKConsumer C)
+find_package(LarixFFmpegSDK CONFIG REQUIRED)
+add_executable(larix_ffmpeg_smoke smoke.c)
+target_compile_features(larix_ffmpeg_smoke PRIVATE c_std_11)
+target_link_libraries(larix_ffmpeg_smoke PRIVATE
+  LarixFFmpegSDK::avutil LarixFFmpegSDK::avcodec LarixFFmpegSDK::avformat
+  LarixFFmpegSDK::swresample LarixFFmpegSDK::swscale)
+foreach(_component avutil avcodec avformat swresample swscale)
+  get_target_property(_runtime LarixFFmpegSDK::${_component} IMPORTED_LOCATION)
+  get_target_property(_implib LarixFFmpegSDK::${_component} IMPORTED_IMPLIB)
+  if(NOT EXISTS "${_runtime}" OR NOT EXISTS "${_implib}")
+    message(FATAL_ERROR "Imported Larix FFmpeg SDK component is incomplete: ${_component}")
+  endif()
+endforeach()
