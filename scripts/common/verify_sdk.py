@@ -10,8 +10,12 @@ import shutil
 import subprocess
 import tempfile
 
-from scripts.common.package import extract_zip_package
-from scripts.common.release_manifest import verify_release_metadata
+from scripts.common.package import extract_package
+from scripts.common.release_manifest import (
+    _normalize_dependencies,
+    _normalize_toolchain,
+    verify_release_metadata,
+)
 from scripts.common.windows_toolchain import (
     discover_visual_studio_environment,
     require_matching_toolchain,
@@ -26,28 +30,6 @@ def _require_archive_identity(
         raise ValueError("archive filename does not match the release manifest")
 
 
-def _normalized_dependency_report(value: object) -> dict[str, list[str]]:
-    if not isinstance(value, dict):
-        raise ValueError("inspection dependency report is invalid")
-    result: dict[str, list[str]] = {}
-    for path, dependencies in value.items():
-        if (
-            not isinstance(path, str)
-            or not isinstance(dependencies, list)
-            or any(
-                not isinstance(dependency, str)
-                or not dependency.lower().endswith(".dll")
-                for dependency in dependencies
-            )
-        ):
-            raise ValueError("inspection dependency report is invalid")
-        normalized = sorted({dependency.upper() for dependency in dependencies})
-        if len(normalized) != len(dependencies):
-            raise ValueError("inspection dependency report has duplicate entries")
-        result[path] = normalized
-    return dict(sorted(result.items()))
-
-
 def _require_inspection_report(
     report: object, manifest: dict[str, object]
 ) -> None:
@@ -55,15 +37,23 @@ def _require_inspection_report(
         "runtimeDependencies", "toolchain"
     }:
         raise ValueError("inspection report fields are invalid")
-    observed = _normalized_dependency_report(report["runtimeDependencies"])
-    declared = _normalized_dependency_report(manifest.get("runtimeDependencies"))
+    target = manifest.get("target")
+    if not isinstance(target, dict):
+        raise ValueError("inspection target identity is invalid")
+    observed = _normalize_dependencies(report["runtimeDependencies"], target)
+    declared = _normalize_dependencies(manifest.get("runtimeDependencies"), target)
     if observed != declared:
         raise ValueError("inspected runtime dependencies do not match the manifest")
     declared_toolchain = manifest.get("toolchain")
     observed_toolchain = report.get("toolchain")
     if not isinstance(declared_toolchain, dict) or not isinstance(observed_toolchain, dict):
         raise ValueError("inspection toolchain identity is invalid")
-    require_matching_toolchain(declared_toolchain, observed_toolchain)
+    normalized_declared = _normalize_toolchain(declared_toolchain, target)
+    normalized_observed = _normalize_toolchain(observed_toolchain, target)
+    if target.get("platform") == "windows":
+        require_matching_toolchain(normalized_declared, normalized_observed)
+    elif normalized_declared != normalized_observed:
+        raise ValueError("inspected toolchain identity does not match the manifest")
 
 
 def _required_tool(
@@ -139,32 +129,45 @@ def verify_ffprobe_inputs(
 
 
 def verify_sdk_archive(archive: Path, repo_root: Path) -> dict[str, object]:
-    """Verify metadata, PE dependencies, relocation, build, link, and runtime smoke."""
-    if archive.suffix.lower() != ".zip":
-        raise ValueError("Task 4 verifier accepts only Windows ZIP SDKs")
+    """Verify metadata, native dependencies, relocation, build, and runtime smoke."""
     with tempfile.TemporaryDirectory(prefix="larix-ffmpeg-sdk-verify-") as temporary:
         work = Path(temporary)
-        sdk = extract_zip_package(archive, work / "relocated-sdk")
+        sdk = extract_package(archive, work / "relocated-sdk")
         manifest = verify_release_metadata(sdk, repo_root)
         _require_archive_identity(archive, manifest)
         target = manifest.get("target")
-        if not isinstance(target, dict) or target.get("id") != "windows-x64-msvc":
-            raise ValueError("archive is not the Windows x64 MSVC SDK")
-        environment, discovered = discover_visual_studio_environment()
-        require_matching_toolchain(manifest["toolchain"], discovered)
-        powershell = _required_tool("powershell", environment)
+        if not isinstance(target, dict):
+            raise ValueError("archive target identity is invalid")
+        target_id = target.get("id")
+        environment = dict(os.environ)
         inspection = work / "inspection.json"
-        subprocess.run(
-            [
+        if target_id == "windows-x64-msvc":
+            environment, discovered = discover_visual_studio_environment()
+            require_matching_toolchain(manifest["toolchain"], discovered)
+            powershell = _required_tool("powershell", environment)
+            inspection_command = [
                 powershell, "-NoLogo", "-NoProfile", "-ExecutionPolicy", "Bypass",
                 "-File", str(repo_root / "scripts" / "platforms" / "windows" / "inspect.ps1"),
                 "-SdkRoot", str(sdk),
                 "-ExpectedPeCsv", ";".join(manifest["runtimeFiles"]),
                 "-ReportPath", str(inspection),
-            ],
-            check=True,
-            env=environment,
-        )
+            ]
+            ffprobe = sdk / "bin" / "ffprobe.exe"
+        elif target_id == "macos-arm64":
+            if os.sys.platform != "darwin":
+                raise RuntimeError("macOS SDK verification requires a macOS host")
+            bash = _required_tool("bash", environment)
+            macos_inspector = repo_root / "scripts/platforms/macos/inspect.sh"
+            inspection_command = [
+                bash, str(macos_inspector),
+                "--sdk-root", str(sdk),
+                "--expected-macho-csv", ";".join(manifest["runtimeFiles"]),
+                "--report-path", str(inspection),
+            ]
+            ffprobe = sdk / "bin" / "ffprobe"
+        else:
+            raise ValueError("unsupported SDK verification target")
+        subprocess.run(inspection_command, check=True, env=environment)
         try:
             report = json.loads(inspection.read_text(encoding="utf-8-sig"))
         except (OSError, UnicodeDecodeError, json.JSONDecodeError) as error:
@@ -181,9 +184,7 @@ def verify_sdk_archive(archive: Path, repo_root: Path) -> dict[str, object]:
         )
         video = fixtures / "video.avi"
         audio = fixtures / "audio.wav"
-        verify_ffprobe_inputs(
-            sdk / "bin" / "ffprobe.exe", video, audio, environment
-        )
+        verify_ffprobe_inputs(ffprobe, video, audio, environment)
         cmake = _required_tool("cmake", environment, environment.get("LARIX_CMAKE"))
         build = work / "consumer-build"
         subprocess.run(
@@ -202,12 +203,16 @@ def verify_sdk_archive(archive: Path, repo_root: Path) -> dict[str, object]:
         candidates = (
             build / "Release" / "larix_ffmpeg_smoke.exe",
             build / "larix_ffmpeg_smoke.exe",
+            build / "larix_ffmpeg_smoke",
         )
         executable = next((path for path in candidates if path.is_file()), None)
         if executable is None:
             raise RuntimeError("CMake consumer executable was not produced")
         environment = dict(environment)
-        environment["PATH"] = str(sdk / "bin") + os.pathsep + environment.get("PATH", "")
+        if target_id == "windows-x64-msvc":
+            environment["PATH"] = str(sdk / "bin") + os.pathsep + environment.get("PATH", "")
+        else:
+            environment["DYLD_LIBRARY_PATH"] = str(sdk / "lib")
         subprocess.run([str(executable), str(video)], check=True, env=environment)
         return manifest
 

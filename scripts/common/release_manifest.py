@@ -32,7 +32,14 @@ WINDOWS_RUNTIME_FILES = tuple(sorted(
 WINDOWS_SYMBOL_FILES = tuple(
     "symbols/" + PurePosixPath(path).stem + ".pdb" for path in WINDOWS_RUNTIME_FILES
 )
-PLATFORM_CONFIGURE_ARGS = (
+MACOS_RUNTIME_FILES = tuple(sorted(
+    ["bin/ffprobe"]
+    + [
+        f"lib/lib{component}.{LIBRARY_VERSIONS[component]}.dylib"
+        for component in COMPONENTS
+    ]
+))
+WINDOWS_PLATFORM_CONFIGURE_ARGS = (
     "--toolchain=msvc",
     "--arch=x86_64",
     "--target-os=win64",
@@ -41,6 +48,41 @@ PLATFORM_CONFIGURE_ARGS = (
     "--extra-ldflags=/Brepro /PDBALTPATH:%_PDB%",
     "--prefix=../install",
 )
+MACOS_PLATFORM_CONFIGURE_ARGS = (
+    "--arch=arm64",
+    "--target-os=darwin",
+    "--cc=clang",
+    "--install-name-dir=@rpath",
+    "--extra-cflags=-mmacosx-version-min=12.0 -ffile-prefix-map=${SOURCE}=larix-source -fdebug-prefix-map=${SOURCE}=larix-source -ffile-prefix-map=${BUILD}=larix-build -fdebug-prefix-map=${BUILD}=larix-build",
+    "--extra-ldflags=-mmacosx-version-min=12.0 -Wl,-headerpad_max_install_names",
+    "--prefix=../install",
+)
+# Retained as the public Windows contract used by existing Task 4 tests.
+PLATFORM_CONFIGURE_ARGS = WINDOWS_PLATFORM_CONFIGURE_ARGS
+
+
+def runtime_files_for_target(target_id: str) -> tuple[str, ...]:
+    if target_id == "windows-x64-msvc":
+        return WINDOWS_RUNTIME_FILES
+    if target_id == "macos-arm64":
+        return MACOS_RUNTIME_FILES
+    raise ValueError(f"unsupported release target: {target_id}")
+
+
+def symbol_files_for_target(target_id: str) -> tuple[str, ...]:
+    if target_id == "windows-x64-msvc":
+        return WINDOWS_SYMBOL_FILES
+    if target_id == "macos-arm64":
+        return ()
+    raise ValueError(f"unsupported release target: {target_id}")
+
+
+def platform_configure_args(target_id: str) -> tuple[str, ...]:
+    if target_id == "windows-x64-msvc":
+        return WINDOWS_PLATFORM_CONFIGURE_ARGS
+    if target_id == "macos-arm64":
+        return MACOS_PLATFORM_CONFIGURE_ARGS
+    raise ValueError(f"unsupported release target: {target_id}")
 _METADATA_DIRECTORY = PurePosixPath("share/larix-ffmpeg-sdk")
 _GENERATED_METADATA = frozenset(
     {"manifest.json", "sbom.spdx.json", "SHA256SUMS"}
@@ -213,11 +255,13 @@ def _patch_manifest(repo_root: Path) -> list[dict[str, object]]:
     return result
 
 
-def _verify_staged_provenance(sdk_root: Path, repo_root: Path) -> None:
+def _verify_staged_provenance(
+    sdk_root: Path, repo_root: Path, target_id: str
+) -> None:
     provenance = sdk_root / _METADATA_DIRECTORY.as_posix() / 'provenance'
     expected = {
         'config/ffmpeg.lock.json': repo_root / 'config' / 'ffmpeg.lock.json',
-        'config/windows-x64-msvc.json': repo_root / 'config' / 'targets' / 'windows-x64-msvc.json',
+        f'config/{target_id}.json': repo_root / 'config' / 'targets' / f'{target_id}.json',
         'config/common.conf': repo_root / 'config' / 'profiles' / 'common.conf',
         'config/lgpl.conf': repo_root / 'config' / 'profiles' / 'lgpl.conf',
         'config/gpl.conf': repo_root / 'config' / 'profiles' / 'gpl.conf',
@@ -236,31 +280,57 @@ def _verify_staged_provenance(sdk_root: Path, repo_root: Path) -> None:
             raise ValueError('staged provenance does not match repository input: ' + relative)
 
 
-def _normalize_toolchain(toolchain: dict[str, str]) -> dict[str, str]:
-    if set(toolchain) != {"compiler", "windowsSdk"}:
+def _normalize_toolchain(
+    toolchain: dict[str, str], target: dict[str, object]
+) -> dict[str, str]:
+    platform = target.get("platform")
+    expected = (
+        {"compiler", "windowsSdk"}
+        if platform == "windows"
+        else {"compiler", "xcode", "macosSdk"}
+        if platform == "macos"
+        else set()
+    )
+    if not expected or set(toolchain) != expected:
         raise ValueError("toolchain identity fields are invalid")
     if any(not isinstance(value, str) or not value.strip() for value in toolchain.values()):
         raise ValueError("toolchain identity is incomplete")
-    if "MSVC" not in toolchain["compiler"]:
+    if platform == "windows" and "MSVC" not in toolchain["compiler"]:
         raise ValueError("Windows SDK compiler is not MSVC")
+    if platform == "macos" and (
+        "clang" not in toolchain["compiler"].casefold()
+        or not toolchain["xcode"].startswith("Xcode ")
+    ):
+        raise ValueError("macOS SDK toolchain identity is invalid")
     return dict(toolchain)
 
 
 def _normalize_dependencies(
-    dependencies: dict[str, list[str]],
+    dependencies: dict[str, list[str]], target: dict[str, object]
 ) -> dict[str, list[str]]:
-    if set(dependencies) != set(WINDOWS_RUNTIME_FILES):
+    runtime_files = runtime_files_for_target(str(target.get("id")))
+    if set(dependencies) != set(runtime_files):
         raise ValueError("runtime dependency inventory is incomplete")
     result: dict[str, list[str]] = {}
-    for path in WINDOWS_RUNTIME_FILES:
+    for path in runtime_files:
         values = dependencies[path]
         if (
             not isinstance(values, list)
             or not values
-            or any(not isinstance(value, str) or not value.lower().endswith(".dll") for value in values)
+            or any(not isinstance(value, str) or not value for value in values)
         ):
             raise ValueError("runtime dependency entry is invalid")
-        normalized = sorted({value.upper() for value in values})
+        if target.get("platform") == "windows":
+            if any(not value.lower().endswith(".dll") for value in values):
+                raise ValueError("runtime dependency entry is invalid")
+            normalized = sorted({value.upper() for value in values})
+        else:
+            if any(
+                not value.startswith(("@rpath/", "/usr/lib/", "/System/Library/Frameworks/"))
+                for value in values
+            ):
+                raise ValueError("runtime dependency entry is invalid")
+            normalized = sorted(set(values))
         if len(normalized) != len(values):
             raise ValueError("runtime dependency entry is duplicate or unsorted")
         result[path] = normalized
@@ -301,30 +371,37 @@ def _scan_forbidden_paths(root: Path, forbidden_paths: tuple[str, ...]) -> None:
 
 
 def _validate_payload_contract(
-    root: Path, entries: list[dict[str, object]], profile: str
+    root: Path,
+    entries: list[dict[str, object]],
+    profile: str,
+    target: dict[str, object],
 ) -> None:
     paths = [str(entry["path"]) for entry in entries]
     if len(paths) != len(set(paths)):
         raise ValueError("SDK inventory contains duplicate paths")
     required = {
         *(f"include/lib{component}/{component}.h" for component in COMPONENTS),
-        *(f"lib/{component}.lib" for component in COMPONENTS),
         "lib/cmake/LarixFFmpegSDK/LarixFFmpegSDKConfig.cmake",
         "share/larix-ffmpeg-sdk/source.json",
         "share/larix-ffmpeg-sdk/build.json",
         "share/larix-ffmpeg-sdk/BUILD.txt",
     }
+    target_id = str(target.get("id"))
+    if target_id == "windows-x64-msvc":
+        required.update(f"lib/{component}.lib" for component in COMPONENTS)
+    required.update(runtime_files_for_target(target_id))
     missing = sorted(required - set(paths))
     if missing:
         raise ValueError(f"SDK package is missing required files: {missing}")
-    runtime = sorted(
-        path for path in paths if PurePosixPath(path).parent.as_posix() == "bin"
-    )
-    if runtime != list(WINDOWS_RUNTIME_FILES):
+    runtime = sorted(path for path in paths if (
+        PurePosixPath(path).parent.as_posix() == "bin"
+        or path.startswith("lib/") and path.endswith(".dylib")
+    ))
+    if runtime != list(runtime_files_for_target(target_id)):
         raise ValueError(f"SDK runtime inventory is invalid: {runtime}")
     symbols = sorted(path for path in paths if path.startswith("symbols/"))
-    if symbols != sorted(WINDOWS_SYMBOL_FILES):
-        raise ValueError("SDK PDB inventory is incomplete or unexpected")
+    if symbols != sorted(symbol_files_for_target(target_id)):
+        raise ValueError("SDK symbol inventory is incomplete or unexpected")
     license_names = {
         PurePosixPath(path).name for path in paths if path.startswith("LICENSES/")
     }
@@ -346,6 +423,10 @@ def _validate_payload_contract(
             raise ValueError(f"SDK package contains a forbidden component: {path}")
         if name.endswith(".a"):
             raise ValueError(f"SDK package contains a static archive: {path}")
+        if target_id == "macos-arm64" and name.endswith((".dll", ".lib", ".exe")):
+            raise ValueError(f"macOS SDK contains a Windows artifact: {path}")
+        if target_id == "windows-x64-msvc" and name.endswith(".dylib"):
+            raise ValueError(f"Windows SDK contains a macOS artifact: {path}")
 
 
 def _build_manifest(
@@ -359,7 +440,8 @@ def _build_manifest(
 ) -> dict[str, object]:
     source = lock["source"]
     configure_args = list(compose_configure_args(repo_root, profile, str(target["id"])))
-    configure_args.extend(PLATFORM_CONFIGURE_ARGS)
+    target_id = str(target["id"])
+    configure_args.extend(platform_configure_args(target_id))
     return {
         "assetName": target_asset_name(lock, profile, target),
         "components": list(COMPONENTS),
@@ -373,10 +455,10 @@ def _build_manifest(
         "patches": _patch_manifest(repo_root),
         "releaseTag": lock["releaseTag"],
         "runtimeDependencies": runtime_dependencies,
-        "runtimeFiles": list(WINDOWS_RUNTIME_FILES),
+        "runtimeFiles": list(runtime_files_for_target(target_id)),
         "schemaVersion": 1,
         "source": dict(source),
-        "symbols": list(WINDOWS_SYMBOL_FILES),
+        "symbols": list(symbol_files_for_target(target_id)),
         "target": dict(target),
         "toolchain": toolchain,
         "upstreamVersion": lock["upstreamVersion"],
@@ -506,19 +588,36 @@ def generate_release_metadata(
     repo_root, lock, target = _resolve_contract(repo_or_lock, target)
     if repo_root is None:
         repo_root = Path(__file__).resolve().parents[2]
-    toolchain = _normalize_toolchain(
-        toolchain or {"compiler": "MSVC unknown", "windowsSdk": "unknown"}
-    )
+    if toolchain is None:
+        toolchain = (
+            {"compiler": "MSVC unknown", "windowsSdk": "unknown"}
+            if target["platform"] == "windows"
+            else {
+                "compiler": "Apple clang unknown",
+                "xcode": "Xcode unknown",
+                "macosSdk": "unknown",
+            }
+        )
+    toolchain = _normalize_toolchain(toolchain, target)
+    runtime_files = runtime_files_for_target(str(target["id"]))
     runtime_dependencies = _normalize_dependencies(
         runtime_dependencies
-        or {path: ["KERNEL32.dll"] for path in WINDOWS_RUNTIME_FILES}
+        or {
+            path: [
+                "KERNEL32.dll"
+                if target["platform"] == "windows"
+                else "/usr/lib/libSystem.B.dylib"
+            ]
+            for path in runtime_files
+        },
+        target,
     )
     metadata = sdk_root / _METADATA_DIRECTORY.as_posix()
     metadata.mkdir(parents=True, exist_ok=True)
     (metadata / "source.json").write_bytes(_canonical_json(lock["source"]))
     build = {
         "configureArgs": list(compose_configure_args(repo_root, profile, str(target["id"])))
-        + list(PLATFORM_CONFIGURE_ARGS),
+        + list(platform_configure_args(str(target["id"]))),
         "pathPolicy": "physical-roots-scanned-not-recorded",
         "runtimeDependencies": runtime_dependencies,
         "toolchain": toolchain,
@@ -526,7 +625,7 @@ def generate_release_metadata(
     (metadata / "build.json").write_bytes(_canonical_json(build))
     _scan_forbidden_paths(sdk_root, forbidden_paths)
     entries = _inventory(sdk_root)
-    _validate_payload_contract(sdk_root, entries, profile)
+    _validate_payload_contract(sdk_root, entries, profile, target)
     manifest = _build_manifest(
         repo_root, lock, profile, target, entries, toolchain, runtime_dependencies
     )
@@ -579,7 +678,8 @@ def verify_release_metadata(
     target = manifest.get("target")
     if not isinstance(profile, str) or not isinstance(target, dict):
         raise ValueError("release manifest identity is invalid")
-    _verify_staged_provenance(sdk_root, contract_root)
+    target_id = str(target.get("id"))
+    _verify_staged_provenance(sdk_root, contract_root, target_id)
     lock = load_lock(contract_root / "config" / "ffmpeg.lock.json")
     expected_target = load_target(
         contract_root / "config" / "targets" / f"{target.get('id')}.json"
@@ -590,24 +690,26 @@ def verify_release_metadata(
         "configureArgs": list(
             compose_configure_args(contract_root, profile, str(expected_target["id"]))
         )
-        + list(PLATFORM_CONFIGURE_ARGS),
+        + list(platform_configure_args(str(expected_target["id"]))),
         "effectiveLicense": _effective_license(profile),
         "libraryVersions": dict(lock["libraryVersions"]),
         "packageFormat": expected_target["packageFormat"],
         "packagingRevision": lock["packagingRevision"],
         "patches": _patch_manifest(contract_root),
         "releaseTag": lock["releaseTag"],
-        "runtimeFiles": list(WINDOWS_RUNTIME_FILES),
+        "runtimeFiles": list(runtime_files_for_target(str(expected_target["id"]))),
         "source": lock["source"],
-        "symbols": list(WINDOWS_SYMBOL_FILES),
+        "symbols": list(symbol_files_for_target(str(expected_target["id"]))),
         "target": expected_target,
         "upstreamVersion": lock["upstreamVersion"],
     }
     for key, expected in expected_identity.items():
         if manifest.get(key) != expected:
             raise ValueError(f"release manifest {key} does not match repository contract")
-    toolchain = _normalize_toolchain(manifest.get("toolchain", {}))
-    dependencies = _normalize_dependencies(manifest.get("runtimeDependencies", {}))
+    toolchain = _normalize_toolchain(manifest.get("toolchain", {}), expected_target)
+    dependencies = _normalize_dependencies(
+        manifest.get("runtimeDependencies", {}), expected_target
+    )
     build = _load_canonical_json(metadata / "build.json")
     if set(build) != {"configureArgs", "pathPolicy", "runtimeDependencies", "toolchain"}:
         raise ValueError("embedded build provenance fields are invalid")
@@ -625,7 +727,7 @@ def verify_release_metadata(
     actual = _inventory(sdk_root)
     if entries != actual:
         raise ValueError("SDK contents do not match the release manifest")
-    _validate_payload_contract(sdk_root, actual, profile)
+    _validate_payload_contract(sdk_root, actual, profile, expected_target)
     _verify_sbom(manifest, _load_canonical_json(metadata / "sbom.spdx.json"))
     expected_sums = metadata / ".expected-SHA256SUMS"
     try:

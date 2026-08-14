@@ -9,6 +9,8 @@ import time
 import unittest
 from unittest import mock
 
+from scripts.common.model import load_target
+from scripts.common.release_manifest import WINDOWS_RUNTIME_FILES
 from scripts.common.verify_sdk import (
     _require_archive_identity,
     _require_inspection_report,
@@ -660,13 +662,15 @@ class FinalArchiveVerificationTests(unittest.TestCase):
             "windowsSdk": "10.0.26100.0",
         }
         self.dependencies = {
-            "bin/ffprobe.exe": ["KERNEL32.dll"],
-            "bin/avcodec-63.dll": ["KERNEL32.dll"],
+            path: ["KERNEL32.dll"] for path in WINDOWS_RUNTIME_FILES
         }
         self.manifest = {
             "assetName": "expected.zip",
             "toolchain": self.identity,
             "runtimeDependencies": self.dependencies,
+            "target": load_target(
+                REPOSITORY_ROOT / "config" / "targets" / "windows-x64-msvc.json"
+            ),
         }
 
     def test_archive_name_is_bound_to_the_manifest(self) -> None:

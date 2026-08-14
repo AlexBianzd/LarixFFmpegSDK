@@ -41,3 +41,23 @@ components, unsafe archive paths, and MSYS2/MinGW runtime dependencies.
 Release manifests record stable SOURCE, BUILD, INSTALL, and OUTPUT aliases;
 the Windows driver substitutes actual paths only for compilation so local
 machine paths do not enter release provenance.
+
+## macOS arm64 build
+
+Run these commands on an Apple Silicon Mac. macOS Intel and universal2 builds
+are intentionally unsupported; every dylib and executable targets arm64 with
+an exact minimum deployment target of macOS 12.0.
+
+```bash
+./scripts/build-macos.sh --profile lgpl --configuration Release --output-root build/macos-lgpl
+./scripts/build-macos.sh --profile gpl --configuration Release --output-root build/macos-gpl
+```
+
+The driver requires Xcode Command Line Tools with Apple Clang, `make`, CMake
+3.25 or newer, and Python 3.12 or newer. It does not install tools. Each
+deterministic `.tar.xz` contains the five versioned shared dylibs, `ffprobe`,
+public headers, relocatable `LarixFFmpegSDK::*` CMake targets, exact legal and
+source provenance, canonical manifest/SBOM/checksums, and no static archives.
+Verification uses `file`, `otool`, and `vtool` to require arm64, macOS 12.0,
+SDK-relative `@rpath` install names, and only packaged FFmpeg or allowlisted
+system dependencies before building and running the relocated C consumer.

@@ -32,7 +32,7 @@
       "type": "object"
     },
     "licenseProfile": {"enum": ["lgpl", "gpl"]},
-    "packageFormat": {"const": "zip"},
+    "packageFormat": {"enum": ["zip", "tar.xz"]},
     "packagingRevision": {"const": 1},
     "patches": {
       "items": {
@@ -55,9 +55,14 @@
         "bin/avutil-61.dll": {"items": {"type": "string"}, "type": "array"},
         "bin/ffprobe.exe": {"items": {"type": "string"}, "type": "array"},
         "bin/swresample-7.dll": {"items": {"type": "string"}, "type": "array"},
-        "bin/swscale-10.dll": {"items": {"type": "string"}, "type": "array"}
+        "bin/swscale-10.dll": {"items": {"type": "string"}, "type": "array"},
+        "bin/ffprobe": {"items": {"type": "string"}, "type": "array"},
+        "lib/libavcodec.63.dylib": {"items": {"type": "string"}, "type": "array"},
+        "lib/libavformat.63.dylib": {"items": {"type": "string"}, "type": "array"},
+        "lib/libavutil.61.dylib": {"items": {"type": "string"}, "type": "array"},
+        "lib/libswresample.7.dylib": {"items": {"type": "string"}, "type": "array"},
+        "lib/libswscale.10.dylib": {"items": {"type": "string"}, "type": "array"}
       },
-      "required": ["bin/avcodec-63.dll", "bin/avformat-63.dll", "bin/avutil-61.dll", "bin/ffprobe.exe", "bin/swresample-7.dll", "bin/swscale-10.dll"],
       "type": "object"
     },
     "runtimeFiles": {"items": {"type": "string"}, "type": "array"},
@@ -82,6 +87,7 @@
         "driver": {"type": "string"},
         "id": {"type": "string"},
         "linkage": {"type": "string"},
+        "minimumOsVersion": {"type": "string"},
         "packageFormat": {"type": "string"},
         "platform": {"type": "string"},
         "toolchain": {"type": "string"}
@@ -93,9 +99,11 @@
       "additionalProperties": false,
       "properties": {
         "compiler": {"type": "string"},
+        "macosSdk": {"type": "string"},
+        "xcode": {"type": "string"},
         "windowsSdk": {"type": "string"}
       },
-      "required": ["compiler", "windowsSdk"],
+      "required": ["compiler"],
       "type": "object"
     },
     "upstreamVersion": {"const": "9.0.1"}

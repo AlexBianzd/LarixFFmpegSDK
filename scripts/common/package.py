@@ -1,4 +1,4 @@
-"""Deterministic ZIP creation and fail-closed clean extraction."""
+"""Deterministic SDK archives and fail-closed clean extraction."""
 
 from __future__ import annotations
 
@@ -7,6 +7,7 @@ import os
 from pathlib import Path
 import shutil
 import stat
+import tarfile
 import tempfile
 import zipfile
 
@@ -47,6 +48,50 @@ def create_zip_package(sdk_root: Path, archive_path: Path) -> Path:
                 info.flag_bits = 0x800
                 with path.open("rb") as source, archive.open(info, "w") as output:
                     shutil.copyfileobj(source, output, length=1024 * 1024)
+        os.replace(temporary, archive_path)
+        temporary = None
+    finally:
+        if temporary is not None:
+            temporary.unlink(missing_ok=True)
+    return archive_path
+
+
+def _archive_mode(relative: str) -> int:
+    if relative.startswith("bin/") or relative.endswith(".dylib"):
+        return 0o755
+    return 0o644
+
+
+def create_tar_xz_package(sdk_root: Path, archive_path: Path) -> Path:
+    """Create one normalized deterministic USTAR/XZ SDK archive."""
+    verify_release_metadata(sdk_root)
+    files = _walk_regular_files(sdk_root, include_generated=True)
+    archive_path.parent.mkdir(parents=True, exist_ok=True)
+    temporary: Path | None = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            prefix=f".{archive_path.name}.",
+            suffix=".tmp",
+            dir=archive_path.parent,
+            delete=False,
+        ) as stream:
+            temporary = Path(stream.name)
+        with tarfile.open(
+            temporary, mode="w:xz", format=tarfile.USTAR_FORMAT, preset=9
+        ) as archive:
+            for path in files:
+                relative = path.relative_to(sdk_root).as_posix()
+                info = tarfile.TarInfo(relative)
+                info.type = tarfile.REGTYPE
+                info.size = path.stat().st_size
+                info.mode = _archive_mode(relative)
+                info.mtime = 0
+                info.uid = 0
+                info.gid = 0
+                info.uname = ""
+                info.gname = ""
+                with path.open("rb") as source:
+                    archive.addfile(info, source)
         os.replace(temporary, archive_path)
         temporary = None
     finally:
@@ -110,6 +155,74 @@ def extract_zip_package(archive_path: Path, destination: Path) -> Path:
     return destination
 
 
+def _validated_tar_entries(archive: tarfile.TarFile) -> list[tarfile.TarInfo]:
+    entries: list[tarfile.TarInfo] = []
+    seen: set[str] = set()
+    portable_seen: set[str] = set()
+    total_size = 0
+    for info in archive.getmembers():
+        if len(entries) >= _MAX_ARCHIVE_FILES:
+            raise ValueError("SDK archive exceeds the file-count limit")
+        name = _validate_relative_path(info.name)
+        portable = name.casefold()
+        if name in seen or portable in portable_seen:
+            raise ValueError("SDK archive contains a duplicate path")
+        seen.add(name)
+        portable_seen.add(portable)
+        if not info.isreg() or info.pax_headers or info.sparse is not None:
+            raise ValueError("SDK archive contains a link or special entry")
+        if info.size < 0:
+            raise ValueError("SDK archive contains an invalid file size")
+        total_size += info.size
+        if total_size > _MAX_EXTRACTED_BYTES:
+            raise ValueError("SDK archive exceeds the extraction size limit")
+        entries.append(info)
+    if not entries:
+        raise ValueError("SDK archive is empty")
+    return entries
+
+
+def extract_tar_xz_package(archive_path: Path, destination: Path) -> Path:
+    """Safely extract an SDK TAR.XZ into a new destination and verify it."""
+    if destination.exists() or destination.is_symlink():
+        raise ValueError("SDK extraction destination must not exist")
+    try:
+        with tarfile.open(archive_path, mode="r:xz") as archive:
+            entries = _validated_tar_entries(archive)
+            destination.mkdir(parents=True)
+            for info in entries:
+                output_path = destination.joinpath(*info.name.split("/"))
+                output_path.parent.mkdir(parents=True, exist_ok=True)
+                source = archive.extractfile(info)
+                if source is None:
+                    raise ValueError("SDK archive file payload is unavailable")
+                with source, output_path.open("xb") as output:
+                    shutil.copyfileobj(source, output, length=1024 * 1024)
+                os.chmod(output_path, stat.S_IMODE(info.mode))
+        verify_release_metadata(destination)
+    except Exception:
+        if destination.exists() and not destination.is_symlink():
+            shutil.rmtree(destination)
+        raise
+    return destination
+
+
+def create_package(sdk_root: Path, archive_path: Path) -> Path:
+    if archive_path.name.endswith(".tar.xz"):
+        return create_tar_xz_package(sdk_root, archive_path)
+    if archive_path.suffix.lower() == ".zip":
+        return create_zip_package(sdk_root, archive_path)
+    raise ValueError("unsupported SDK package format")
+
+
+def extract_package(archive_path: Path, destination: Path) -> Path:
+    if archive_path.name.endswith(".tar.xz"):
+        return extract_tar_xz_package(archive_path, destination)
+    if archive_path.suffix.lower() == ".zip":
+        return extract_zip_package(archive_path, destination)
+    raise ValueError("unsupported SDK package format")
+
+
 def _main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--sdk-root', type=Path)
@@ -119,9 +232,9 @@ def _main() -> int:
     if (arguments.sdk_root is None) == (arguments.extract_to is None):
         parser.error('provide exactly one of --sdk-root or --extract-to')
     if arguments.sdk_root is not None:
-        create_zip_package(arguments.sdk_root, arguments.archive)
+        create_package(arguments.sdk_root, arguments.archive)
     else:
-        extract_zip_package(arguments.archive, arguments.extract_to)
+        extract_package(arguments.archive, arguments.extract_to)
     return 0
 
 

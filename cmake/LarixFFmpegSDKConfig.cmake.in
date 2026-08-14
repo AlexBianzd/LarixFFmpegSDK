@@ -1,29 +1,61 @@
-if(NOT WIN32)
-  message(FATAL_ERROR "This Larix FFmpeg SDK package targets Windows x64 MSVC")
-endif()
-if(NOT MSVC OR NOT CMAKE_SIZEOF_VOID_P EQUAL 8)
-  message(FATAL_ERROR "This Larix FFmpeg SDK package requires Windows x64 MSVC")
-endif()
-
 get_filename_component(_larix_ffmpeg_prefix "${CMAKE_CURRENT_LIST_DIR}/../../.." ABSOLUTE)
 set(_larix_ffmpeg_components avutil avcodec avformat swresample swscale)
 set(_larix_ffmpeg_dll_versions 61 63 63 7 10)
+set(_larix_ffmpeg_macos_files
+  libavutil.61.dylib
+  libavcodec.63.dylib
+  libavformat.63.dylib
+  libswresample.7.dylib
+  libswscale.10.dylib)
+if(WIN32)
+  if(NOT MSVC OR NOT CMAKE_SIZEOF_VOID_P EQUAL 8)
+    message(FATAL_ERROR "This Larix FFmpeg SDK package requires Windows x64 MSVC")
+  endif()
+elseif(APPLE)
+  if(NOT CMAKE_SIZEOF_VOID_P EQUAL 8)
+    message(FATAL_ERROR "This Larix FFmpeg SDK package requires macOS arm64")
+  endif()
+  if(CMAKE_OSX_ARCHITECTURES AND NOT CMAKE_OSX_ARCHITECTURES STREQUAL "arm64")
+    message(FATAL_ERROR "This Larix FFmpeg SDK package does not support macOS Intel or universal builds")
+  endif()
+  if(NOT CMAKE_OSX_ARCHITECTURES AND
+     NOT CMAKE_SYSTEM_PROCESSOR MATCHES "^(arm64|aarch64)$")
+    message(FATAL_ERROR "This Larix FFmpeg SDK package requires macOS arm64")
+  endif()
+else()
+  message(FATAL_ERROR "This Larix FFmpeg SDK package targets Windows x64 MSVC or macOS arm64")
+endif()
+
 list(LENGTH _larix_ffmpeg_components _larix_ffmpeg_count)
 math(EXPR _larix_ffmpeg_last "${_larix_ffmpeg_count} - 1")
 foreach(_index RANGE 0 ${_larix_ffmpeg_last})
   list(GET _larix_ffmpeg_components ${_index} _component)
   list(GET _larix_ffmpeg_dll_versions ${_index} _version)
-  set(_implib "${_larix_ffmpeg_prefix}/lib/${_component}.lib")
-  set(_runtime "${_larix_ffmpeg_prefix}/bin/${_component}-${_version}.dll")
-  if(NOT EXISTS "${_implib}" OR NOT EXISTS "${_runtime}")
-    message(FATAL_ERROR "Larix FFmpeg SDK component is incomplete: ${_component}")
+  if(WIN32)
+    set(_implib "${_larix_ffmpeg_prefix}/lib/${_component}.lib")
+    set(_runtime "${_larix_ffmpeg_prefix}/bin/${_component}-${_version}.dll")
+    if(NOT EXISTS "${_implib}" OR NOT EXISTS "${_runtime}")
+      message(FATAL_ERROR "Larix FFmpeg SDK component is incomplete: ${_component}")
+    endif()
+  else()
+    list(GET _larix_ffmpeg_macos_files ${_index} _macos_file)
+    set(_runtime "${_larix_ffmpeg_prefix}/lib/${_macos_file}")
+    if(NOT EXISTS "${_runtime}")
+      message(FATAL_ERROR "Larix FFmpeg SDK component is incomplete: ${_component}")
+    endif()
   endif()
   if(NOT TARGET LarixFFmpegSDK::${_component})
     add_library(LarixFFmpegSDK::${_component} SHARED IMPORTED)
-    set_target_properties(LarixFFmpegSDK::${_component} PROPERTIES
-      IMPORTED_IMPLIB "${_implib}"
-      IMPORTED_LOCATION "${_runtime}"
-      INTERFACE_INCLUDE_DIRECTORIES "${_larix_ffmpeg_prefix}/include")
+    if(WIN32)
+      set_target_properties(LarixFFmpegSDK::${_component} PROPERTIES
+        IMPORTED_IMPLIB "${_implib}"
+        IMPORTED_LOCATION "${_runtime}"
+        INTERFACE_INCLUDE_DIRECTORIES "${_larix_ffmpeg_prefix}/include")
+    else()
+      set_target_properties(LarixFFmpegSDK::${_component} PROPERTIES
+        IMPORTED_LOCATION "${_runtime}"
+        INTERFACE_INCLUDE_DIRECTORIES "${_larix_ffmpeg_prefix}/include")
+    endif()
   endif()
 endforeach()
 set_property(TARGET LarixFFmpegSDK::avcodec APPEND PROPERTY
@@ -37,3 +69,4 @@ set_property(TARGET LarixFFmpegSDK::swscale APPEND PROPERTY
 unset(_larix_ffmpeg_prefix)
 unset(_implib)
 unset(_runtime)
+unset(_macos_file)
