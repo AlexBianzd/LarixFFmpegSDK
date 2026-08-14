@@ -2,15 +2,23 @@ name: Publish SDK Release
 
 on:
   workflow_dispatch:
+    inputs:
+      artifact_run_id:
+        description: Optional prior successful build run to recheck only the catalog
+        required: false
+        type: string
+        default: ''
   push:
     tags:
       - ffmpeg-9.0.1-larix.1
 
 permissions:
+  actions: read
   contents: read
 
 jobs:
   windows-sdk:
+    if: github.event_name == 'push' || inputs.artifact_run_id == ''
     runs-on: windows-2022
     timeout-minutes: 240
     strategy:
@@ -55,6 +63,7 @@ jobs:
           retention-days: 1
 
   macos-sdk:
+    if: github.event_name == 'push' || inputs.artifact_run_id == ''
     runs-on: macos-15
     timeout-minutes: 240
     strategy:
@@ -77,6 +86,7 @@ jobs:
 
   catalog:
     needs: [windows-sdk, macos-sdk]
+    if: github.event_name == 'push' || inputs.artifact_run_id == ''
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
@@ -90,6 +100,35 @@ jobs:
           path: build/release-candidate
           merge-multiple: true
       - name: Assemble and verify exact release catalog
+        run: >-
+          python -m scripts.common.verify_release
+          --asset-directory build/release-candidate
+          --tag ffmpeg-9.0.1-larix.1
+          --download-source --assemble
+      - uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4
+        with:
+          name: release-candidate
+          path: build/release-candidate/*
+          if-no-files-found: error
+          retention-days: 1
+
+  catalog-from-run:
+    if: github.event_name == 'workflow_dispatch' && inputs.artifact_run_id != ''
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.13'
+      - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0
+        with:
+          pattern: sdk-*
+          path: build/release-candidate
+          merge-multiple: true
+          github-token: ${{ github.token }}
+          run-id: ${{ inputs.artifact_run_id }}
+      - name: Reassemble and verify exact release catalog
         run: >-
           python -m scripts.common.verify_release
           --asset-directory build/release-candidate
