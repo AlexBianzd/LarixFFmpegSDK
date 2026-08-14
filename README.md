@@ -1,15 +1,22 @@
 # Larix FFmpeg SDK
 
-> **Pre-release:** The reproducible build and verification tooling is under
-> active development. No formal SDK release has been published yet.
-
-LarixFFmpegSDK pins the official FFmpeg source identity and will own the
+LarixFFmpegSDK pins the official FFmpeg source identity and owns the
 reproducible build, verification, packaging, and publication process for the
 Larix SDK.
 
 The [MIT license](LICENSE) applies to original files in this repository only.
 FFmpeg source and derived binaries remain subject to their applicable LGPL or
 GPL terms.
+
+## Current release
+
+[`ffmpeg-9.0.1-larix.1`](https://github.com/AlexBianzd/LarixFFmpegSDK/releases/tag/ffmpeg-9.0.1-larix.1)
+is the first immutable public release. It contains LGPL and GPL shared-library
+SDKs for Windows x64 MSVC and macOS arm64, plus the hash-locked FFmpeg source,
+release catalog, and top-level checksums. See the
+[durable release report](docs/reports/2026-08-13-ffmpeg-9.0.1-larix.1-release.md)
+for exact assets, hashes, toolchains, verification evidence, and unsupported
+platform boundaries.
 
 ## Source lock
 
