@@ -1,0 +1,71 @@
+name: Verify SDK
+
+on:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      full:
+        description: Build and verify all LGPL/GPL SDK packages
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  fast-tests:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.13'
+      - name: Run lightweight contract tests
+        run: python -m unittest discover -s tests -p 'test_*.py' -v
+
+  windows-sdk:
+    if: github.event_name == 'workflow_dispatch' && inputs.full
+    runs-on: windows-2022
+    timeout-minutes: 240
+    strategy:
+      fail-fast: false
+      matrix:
+        profile: [lgpl, gpl]
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.13'
+      - name: Build and verify Windows SDK
+        shell: powershell
+        run: ./scripts/build-windows.ps1 -Profile ${{ matrix.profile }} -Configuration Release -OutputRoot build/windows-${{ matrix.profile }}
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: windows-x64-msvc-${{ matrix.profile }}
+          path: build/windows-${{ matrix.profile }}/package/*.zip
+          if-no-files-found: error
+          retention-days: 1
+
+  macos-sdk:
+    if: github.event_name == 'workflow_dispatch' && inputs.full
+    runs-on: macos-15
+    timeout-minutes: 240
+    strategy:
+      fail-fast: false
+      matrix:
+        profile: [lgpl, gpl]
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.13'
+      - name: Build and verify macOS arm64 SDK
+        run: ./scripts/build-macos.sh --profile ${{ matrix.profile }} --configuration Release --output-root build/macos-${{ matrix.profile }}
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: macos-arm64-${{ matrix.profile }}
+          path: build/macos-${{ matrix.profile }}/package/*.tar.xz
+          if-no-files-found: error
+          retention-days: 1

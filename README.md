@@ -61,3 +61,19 @@ source provenance, canonical manifest/SBOM/checksums, and no static archives.
 Verification uses `file`, `otool`, and `vtool` to require arm64, macOS 12.0,
 SDK-relative `@rpath` install names, and only packaged FFmpeg or allowlisted
 system dependencies before building and running the relocated C consumer.
+
+## GitHub verification
+
+Pull requests run only the lightweight Python contract suite on the standard
+public `ubuntu-24.04` runner. Maintainers can manually dispatch the `Verify
+SDK` workflow with `full=true` to build all four LGPL/GPL Windows x64 and
+macOS arm64 packages on standard `windows-2022` and `macos-15` runners.
+
+```bash
+gh workflow run verify.yml --repo AlexBianzd/LarixFFmpegSDK --ref master -f full=true
+gh run watch --repo AlexBianzd/LarixFFmpegSDK --exit-status
+```
+
+The workflow has read-only repository permissions, uses SHA-pinned official
+GitHub actions, and retains intermediate SDK archives for one day. It does not
+use larger, paid, or self-hosted runners and does not publish release assets.

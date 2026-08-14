@@ -1,0 +1,79 @@
+from __future__ import annotations
+
+from pathlib import Path
+import re
+import unittest
+
+
+REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
+WORKFLOW = REPOSITORY_ROOT / ".github" / "workflows" / "verify.yml"
+
+
+class WorkflowPolicyContractTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.assertTrue(WORKFLOW.is_file(), "missing .github/workflows/verify.yml")
+        self.source = WORKFLOW.read_text(encoding="utf-8")
+
+    def test_only_pull_request_and_manual_verification_are_enabled(self) -> None:
+        self.assertRegex(self.source, r"(?m)^on:\s*$")
+        self.assertRegex(self.source, r"(?m)^  pull_request:\s*$")
+        self.assertRegex(self.source, r"(?m)^  workflow_dispatch:\s*$")
+        self.assertNotRegex(self.source, r"(?m)^  (push|schedule):")
+        self.assertIn("full:", self.source)
+        self.assertIn("type: boolean", self.source)
+        self.assertIn("default: false", self.source)
+
+    def test_permissions_and_runner_labels_are_free_public_runner_only(self) -> None:
+        self.assertRegex(self.source, r"(?ms)^permissions:\s*\n  contents: read\s*$")
+        self.assertIn("runs-on: ubuntu-24.04", self.source)
+        self.assertIn("runs-on: windows-2022", self.source)
+        self.assertIn("runs-on: macos-15", self.source)
+        lowered = self.source.lower()
+        for forbidden in (
+            "self-hosted",
+            "xlarge",
+            "large",
+            "packages: write",
+            "contents: write",
+            "id-token: write",
+            "docker://",
+        ):
+            self.assertNotIn(forbidden, lowered)
+
+    def test_full_jobs_are_manual_and_call_only_repository_build_drivers(self) -> None:
+        manual_gate = "github.event_name == 'workflow_dispatch' && inputs.full"
+        self.assertGreaterEqual(self.source.count(manual_gate), 2)
+        self.assertIn("scripts/build-windows.ps1", self.source)
+        self.assertIn("./scripts/build-macos.sh", self.source)
+        for forbidden in (
+            "--enable-gpl",
+            "--disable-nonfree",
+            "--extra-cflags",
+            "--extra-ldflags",
+            "./configure",
+        ):
+            self.assertNotIn(forbidden, self.source)
+
+    def test_actions_are_sha_pinned_and_artifacts_expire_after_one_day(self) -> None:
+        uses = re.findall(r"(?m)^\s*- uses:\s*([^\s]+)\s*$", self.source)
+        self.assertTrue(uses)
+        for action in uses:
+            self.assertRegex(action, r"^actions/(checkout|setup-python|upload-artifact)@[0-9a-f]{40}$")
+        self.assertEqual(self.source.count("retention-days: 1"), 2)
+        self.assertNotIn("retention-days: 2", self.source)
+
+    def test_fast_tests_run_on_pull_requests_without_building_packages(self) -> None:
+        self.assertIn("python -m unittest discover -s tests -p 'test_*.py' -v", self.source)
+        fast_start = self.source.index("  fast-tests:")
+        full_start = min(
+            self.source.index("  windows-sdk:"),
+            self.source.index("  macos-sdk:"),
+        )
+        fast_job = self.source[fast_start:full_start]
+        self.assertNotIn("upload-artifact", fast_job)
+        self.assertNotIn("build-windows.ps1", fast_job)
+        self.assertNotIn("build-macos.sh", fast_job)
+
+
+if __name__ == "__main__":
+    unittest.main()
