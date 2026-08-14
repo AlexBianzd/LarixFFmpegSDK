@@ -58,7 +58,18 @@ class WorkflowPolicyContractTests(unittest.TestCase):
         uses = re.findall(r"(?m)^\s*- uses:\s*([^\s]+)\s*$", self.source)
         self.assertTrue(uses)
         for action in uses:
-            self.assertRegex(action, r"^actions/(checkout|setup-python|upload-artifact)@[0-9a-f]{40}$")
+            self.assertRegex(
+                action,
+                r"^(actions/(checkout|setup-python|upload-artifact)|"
+                r"msys2/setup-msys2)@[0-9a-f]{40}$",
+            )
+        required = {
+            "actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09",
+            "actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1",
+            "actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02",
+            "msys2/setup-msys2@66cd2cce69caa17b53920067426061ca1de3a884",
+        }
+        self.assertTrue(required <= set(uses))
         self.assertEqual(self.source.count("retention-days: 1"), 2)
         self.assertNotIn("retention-days: 2", self.source)
 
@@ -90,6 +101,17 @@ class WorkflowPolicyContractTests(unittest.TestCase):
         )
         self.assertIn("Get-FileHash", windows_job)
         self.assertIn("Start-Process", windows_job)
+        self.assertIn("id: msys2", windows_job)
+        self.assertIn("release: false", windows_job)
+        self.assertIn("update: false", windows_job)
+        self.assertIn("make diffutils", windows_job)
+        self.assertIn("steps.msys2.outputs.msys2-location", windows_job)
+        for variable in (
+            "LARIX_MSYS2_BASH",
+            "LARIX_MSYS2_MAKE",
+            "LARIX_MSYS2_CMP",
+        ):
+            self.assertIn(variable, windows_job)
         self.assertLess(
             windows_job.index("Get-FileHash"),
             windows_job.index("scripts/build-windows.ps1"),

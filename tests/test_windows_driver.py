@@ -586,7 +586,9 @@ class WindowsWrapperTests(unittest.TestCase):
             self.assertEqual(completed.returncode, 0, completed.stderr)
             profile, output = completed.stdout.strip().split("|", 1)
             self.assertEqual(profile, "gpl")
-            self.assertEqual(Path(output), root / "build" / "windows-gpl")
+            output_path = Path(output)
+            self.assertEqual(output_path.parts[-2:], ("build", "windows-gpl"))
+            self.assertTrue(os.path.samefile(output_path.parents[1], root))
 
 
 class DeterministicFixtureTests(unittest.TestCase):

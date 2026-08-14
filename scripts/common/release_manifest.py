@@ -53,7 +53,7 @@ MACOS_PLATFORM_CONFIGURE_ARGS = (
     "--target-os=darwin",
     "--cc=clang",
     "--install-name-dir=@rpath",
-    "--extra-cflags=-mmacosx-version-min=12.0 -ffile-prefix-map=${SOURCE}=larix-source -fdebug-prefix-map=${SOURCE}=larix-source -ffile-prefix-map=${BUILD}=larix-build -fdebug-prefix-map=${BUILD}=larix-build",
+    "--extra-cflags=-mmacosx-version-min=12.0 -fdebug-compilation-dir=larix-build -ffile-prefix-map=${SOURCE}=larix-source -fdebug-prefix-map=${SOURCE}=larix-source -ffile-prefix-map=${BUILD}=larix-build -fdebug-prefix-map=${BUILD}=larix-build",
     "--extra-ldflags=-mmacosx-version-min=12.0 -Wl,-headerpad_max_install_names",
     "--prefix=../install",
 )

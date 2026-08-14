@@ -107,6 +107,7 @@ class MacOSDriverContractTests(unittest.TestCase):
         self.assertIn("--prefix=../install", build)
         self.assertNotIn('"--prefix=$install_root"', build)
         self.assertIn("-ffile-prefix-map=./src=larix-source", build)
+        self.assertIn("-fdebug-compilation-dir=larix-build", build)
         self.assertIn('ln -s "$source_root" "$build_root/src"', build)
         self.assertIn('"$build_root/src/configure"', build)
         self.assertIn("absolute_prefix_maps=", build)

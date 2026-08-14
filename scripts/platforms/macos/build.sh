@@ -54,7 +54,7 @@ configure_args+=(
   --cc=clang
   --install-name-dir=@rpath
   --prefix=../install
-  "--extra-cflags=-mmacosx-version-min=12.0 -ffile-prefix-map=./src=larix-source -fdebug-prefix-map=./src=larix-source -ffile-prefix-map=.=larix-build -fdebug-prefix-map=.=larix-build"
+  "--extra-cflags=-mmacosx-version-min=12.0 -fdebug-compilation-dir=larix-build -ffile-prefix-map=./src=larix-source -fdebug-prefix-map=./src=larix-source -ffile-prefix-map=.=larix-build -fdebug-prefix-map=.=larix-build"
   "--extra-ldflags=-mmacosx-version-min=12.0 -Wl,-headerpad_max_install_names"
 )
 
