@@ -9,6 +9,11 @@ on:
         required: true
         type: boolean
         default: false
+      diagnostic_macos:
+        description: Restrict a temporary diagnostic run to macOS jobs
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -26,7 +31,7 @@ jobs:
         run: python -m unittest discover -s tests -p 'test_*.py' -v
 
   windows-sdk:
-    if: github.event_name == 'workflow_dispatch' && inputs.full
+    if: github.event_name == 'workflow_dispatch' && inputs.full && !inputs.diagnostic_macos
     runs-on: windows-2022
     timeout-minutes: 240
     strategy:
@@ -112,6 +117,46 @@ jobs:
               )
               index = decoded.casefold().find(value.casefold())
               print(f"casefold utf-16le phase {phase} character offset: {index}")
+
+          import struct
+          magic, _, _, _, command_count, _, _, _ = struct.unpack_from(
+              "<IiiIIIII", payload, 0
+          )
+          if magic != 0xFEEDFACF:
+              raise SystemExit("unexpected Mach-O magic")
+          target_offset = payload.find(value.encode("utf-8"))
+          command_offset = 32
+          for _ in range(command_count):
+              command, command_size = struct.unpack_from(
+                  "<II", payload, command_offset
+              )
+              if command == 0x19:
+                  segment = struct.unpack_from(
+                      "<II16sQQQQiiII", payload, command_offset
+                  )
+                  section_count = segment[-2]
+                  section_offset = command_offset + 72
+                  for _ in range(section_count):
+                      section = struct.unpack_from(
+                          "<16s16sQQIIIIIIII", payload, section_offset
+                      )
+                      name = section[0].split(b"\0", 1)[0].decode("ascii")
+                      segment_name = section[1].split(b"\0", 1)[0].decode("ascii")
+                      size = section[3]
+                      file_offset = section[4]
+                      if file_offset <= target_offset < file_offset + size:
+                          print(f"matching section: {segment_name},{name}")
+                      section_offset += 80
+              command_offset += command_size
+          PY
+          python3 - "$PWD/build/macos-${{ matrix.profile }}/build/ffbuild/config.mak" "$build_root" <<'PY'
+          import pathlib
+          import sys
+
+          text = pathlib.Path(sys.argv[1]).read_text(encoding="utf-8")
+          build_root = sys.argv[2]
+          print(f"config CFLAGS contain absolute build map: {-1 != text.find('-ffile-prefix-map=' + build_root + '=larix-build')}")
+          print(f"config CFLAGS contain stable compilation dir: {'-fdebug-compilation-dir=larix-build' in text}")
           PY
           echo "::group::matching strings"
           strings -a -t x "$binary" | grep -F -C 3 "$build_root" || true
