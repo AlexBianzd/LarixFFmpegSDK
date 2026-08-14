@@ -21,7 +21,7 @@ case "$profile" in lgpl|gpl) ;; *) echo "invalid profile: $profile" >&2; exit 2 
 [[ $(uname -s) == Darwin ]] || { echo "macOS is required" >&2; exit 2; }
 [[ $(uname -m) == arm64 ]] || { echo "Apple Silicon arm64 is required" >&2; exit 2; }
 
-for tool in python3 clang make cmake file otool vtool xcodebuild xcrun; do
+for tool in python3 clang make cmake file otool vtool xcodebuild xcrun strip; do
   command -v "$tool" >/dev/null || { echo "required tool is missing: $tool" >&2; exit 1; }
 done
 python3 -c 'import sys; assert sys.version_info >= (3, 12), sys.version'
@@ -86,6 +86,10 @@ cp "$repo_root/cmake/LarixFFmpegSDKConfig.cmake.in" \
 python3 -m scripts.common.stage_sdk \
   --source-root "$source_root" --repo-root "$repo_root" \
   --stage-root "$stage_root" --profile "$profile" --target macos-arm64
+
+while IFS= read -r relative; do
+  strip -S "$stage_root/$relative"
+done < <(python3 -c 'from scripts.common.release_manifest import runtime_files_for_target; print("\n".join(runtime_files_for_target("macos-arm64")))')
 
 runtime_csv=$(python3 -c 'from scripts.common.release_manifest import runtime_files_for_target; print(";".join(runtime_files_for_target("macos-arm64")))')
 inspection="$output_root/inspection.json"

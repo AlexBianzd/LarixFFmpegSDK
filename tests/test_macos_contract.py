@@ -124,6 +124,13 @@ class MacOSDriverContractTests(unittest.TestCase):
         self.assertIn("scripts.common.package", build)
         self.assertIn("scripts.common.verify_sdk", build)
         self.assertIn('export PYTHONPATH="$repo_root"', build)
+        self.assertIn('strip -S "$stage_root/$relative"', build)
+        self.assertIn('runtime_files_for_target("macos-arm64")', build)
+        self.assertLess(
+            build.index('strip -S "$stage_root/$relative"'),
+            build.index("scripts.common.release_manifest"),
+        )
+        self.assertRegex(build, r"for tool in [^\n]*\bstrip\b")
 
         for tool in ("file", "otool", "vtool"):
             self.assertIn(tool, inspect)
