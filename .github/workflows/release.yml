@@ -1,6 +1,7 @@
 name: Publish SDK Release
 
 on:
+  workflow_dispatch:
   push:
     tags:
       - ffmpeg-9.0.1-larix.1
@@ -74,12 +75,10 @@ jobs:
           if-no-files-found: error
           retention-days: 1
 
-  publish:
+  catalog:
     needs: [windows-sdk, macos-sdk]
     runs-on: ubuntu-24.04
     timeout-minutes: 30
-    permissions:
-      contents: write
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
@@ -96,6 +95,25 @@ jobs:
           --asset-directory build/release-candidate
           --tag ffmpeg-9.0.1-larix.1
           --download-source --assemble
+      - uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4
+        with:
+          name: release-candidate
+          path: build/release-candidate/*
+          if-no-files-found: error
+          retention-days: 1
+
+  publish:
+    needs: catalog
+    if: github.event_name == 'push' && github.ref == 'refs/tags/ffmpeg-9.0.1-larix.1'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0
+        with:
+          name: release-candidate
+          path: build/release-candidate
       - name: Publish immutable public Release
         env:
           GH_TOKEN: ${{ github.token }}

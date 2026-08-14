@@ -185,9 +185,15 @@ class ReleaseWorkflowContractTests(unittest.TestCase):
             encoding="utf-8"
         )
         self.assertIn("ffmpeg-9.0.1-larix.1", workflow)
+        self.assertRegex(workflow, r"(?m)^  workflow_dispatch:\s*$")
         self.assertEqual(workflow.count("contents: write"), 1)
         self.assertIn("contents: read", workflow)
-        self.assertIn("needs:", workflow)
+        self.assertIn("  catalog:", workflow)
+        self.assertIn("name: release-candidate", workflow)
+        self.assertIn("needs: catalog", workflow)
+        self.assertIn(
+            "github.ref == 'refs/tags/ffmpeg-9.0.1-larix.1'", workflow
+        )
         self.assertIn("gh release create", workflow)
         self.assertNotIn("--clobber", workflow)
         self.assertNotIn("self-hosted", workflow)
