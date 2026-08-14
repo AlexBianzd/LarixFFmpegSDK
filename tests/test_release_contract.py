@@ -151,10 +151,11 @@ class ReleaseCandidateContractTests(unittest.TestCase):
             metadata / "manifest.json",
             metadata / "sbom.spdx.json",
             metadata / "build.json",
+            metadata / "BUILD.txt",
             metadata / "SHA256SUMS",
-            metadata / "provenance" / "source.json",
+            metadata / "source.json",
             metadata / "provenance" / "patches" / "README.md",
-            metadata / "provenance" / "config" / "profiles" / "common.conf",
+            metadata / "provenance" / "config" / "common.conf",
             sdk / "LICENSES" / "LarixFFmpegSDK-MIT.txt",
             sdk / "LICENSES" / "FFmpeg-LICENSE.md",
         )
