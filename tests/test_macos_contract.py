@@ -14,7 +14,7 @@ from scripts.common.release_manifest import (
     generate_release_metadata,
     verify_release_metadata,
 )
-from scripts.common.verify_sdk import _require_inspection_report
+from scripts.common.verify_sdk import _require_inspection_report, _runtime_environment
 from tests.test_manifest import LOCK, TARGET, create_sdk
 
 
@@ -250,6 +250,16 @@ class MacOSReleaseManifestContractTests(unittest.TestCase):
 
 
 class MacOSConsumerContractTests(unittest.TestCase):
+    def test_runtime_environment_uses_only_the_relocated_macos_library_directory(self) -> None:
+        sdk = Path("relocated-sdk")
+        environment = _runtime_environment(
+            "macos-arm64",
+            sdk,
+            {"PATH": "/usr/bin", "DYLD_LIBRARY_PATH": "/foreign/lib"},
+        )
+        self.assertEqual(environment["PATH"], "/usr/bin")
+        self.assertEqual(environment["DYLD_LIBRARY_PATH"], str(sdk / "lib"))
+
     def test_cmake_config_exports_exact_arm64_dylib_locations(self) -> None:
         source = (
             REPOSITORY_ROOT / "cmake" / "LarixFFmpegSDKConfig.cmake.in"

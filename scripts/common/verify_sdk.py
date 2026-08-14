@@ -77,6 +77,21 @@ def _duration_is(value: object, expected: float) -> bool:
         return False
 
 
+def _runtime_environment(
+    target_id: str, sdk: Path, environment: dict[str, str]
+) -> dict[str, str]:
+    runtime_environment = dict(environment)
+    if target_id == "windows-x64-msvc":
+        runtime_environment["PATH"] = (
+            str(sdk / "bin") + os.pathsep + runtime_environment.get("PATH", "")
+        )
+    elif target_id == "macos-arm64":
+        runtime_environment["DYLD_LIBRARY_PATH"] = str(sdk / "lib")
+    else:
+        raise ValueError("unsupported SDK verification target")
+    return runtime_environment
+
+
 def verify_ffprobe_inputs(
     ffprobe: Path, video_path: Path, audio_path: Path, environment: dict[str, str]
 ) -> None:
@@ -173,6 +188,7 @@ def verify_sdk_archive(archive: Path, repo_root: Path) -> dict[str, object]:
         except (OSError, UnicodeDecodeError, json.JSONDecodeError) as error:
             raise ValueError("inspection report is invalid JSON") from error
         _require_inspection_report(report, manifest)
+        environment = _runtime_environment(target_id, sdk, environment)
         fixtures = work / "fixtures"
         subprocess.run(
             [
@@ -208,11 +224,6 @@ def verify_sdk_archive(archive: Path, repo_root: Path) -> dict[str, object]:
         executable = next((path for path in candidates if path.is_file()), None)
         if executable is None:
             raise RuntimeError("CMake consumer executable was not produced")
-        environment = dict(environment)
-        if target_id == "windows-x64-msvc":
-            environment["PATH"] = str(sdk / "bin") + os.pathsep + environment.get("PATH", "")
-        else:
-            environment["DYLD_LIBRARY_PATH"] = str(sdk / "lib")
         subprocess.run([str(executable), str(video)], check=True, env=environment)
         return manifest
 
