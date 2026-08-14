@@ -215,6 +215,33 @@ class WindowsToolchainTests(unittest.TestCase):
         self.assertEqual(Path(run.call_args_list[0].args[0][0]), vswhere)
         self.assertIn(str(vcvars), run.call_args_list[1].args[0])
 
+    def test_discovers_toolchain_identity_with_windows_key_casing(self) -> None:
+        vswhere = Path("C:/Program Files (x86)/Microsoft Visual Studio/Installer/vswhere.exe")
+        installation = Path("C:/Program Files/Microsoft Visual Studio/2022/Enterprise")
+        vcvars = installation / "VC/Auxiliary/Build/vcvars64.bat"
+        outputs = [
+            mock.Mock(returncode=0, stdout=str(installation) + "\n", stderr=""),
+            mock.Mock(
+                returncode=0,
+                stdout=(
+                    "VCTOOLSVERSION=14.44.35207\n"
+                    "WindowsSdkVersion=10.0.26100.0\\\n"
+                ),
+                stderr="",
+            ),
+        ]
+        exists = lambda path: Path(path) in {vswhere, vcvars}
+        with mock.patch("subprocess.run", side_effect=outputs):
+            _, identity = discover_visual_studio_environment(
+                {"VCToolsVersion": "stale", "WINDOWSSDKVERSION": "stale"},
+                exists=exists,
+                standard_vswhere=vswhere,
+            )
+        self.assertEqual(
+            identity,
+            {"compiler": "MSVC 14.44.35207", "windowsSdk": "10.0.26100.0"},
+        )
+
     def test_rejects_declared_toolchain_drift(self) -> None:
         with self.assertRaises(ValueError):
             require_matching_toolchain(

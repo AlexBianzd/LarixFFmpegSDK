@@ -96,6 +96,23 @@ jobs:
           binary="build/macos-${{ matrix.profile }}/stage/bin/ffprobe"
           build_root="$PWD/build/macos-${{ matrix.profile }}/build"
           [[ -f "$binary" ]] || exit 0
+          python3 - "$binary" "$build_root" <<'PY'
+          import pathlib
+          import sys
+
+          payload = pathlib.Path(sys.argv[1]).read_bytes()
+          value = sys.argv[2]
+          for encoding in ("utf-8", "utf-16le"):
+              offset = payload.find(value.encode(encoding))
+              print(f"exact {encoding} offset: {offset}")
+          for phase in (0, 1):
+              even_length = (len(payload) - phase) & ~1
+              decoded = payload[phase:phase + even_length].decode(
+                  "utf-16le", errors="ignore"
+              )
+              index = decoded.casefold().find(value.casefold())
+              print(f"casefold utf-16le phase {phase} character offset: {index}")
+          PY
           echo "::group::matching strings"
           strings -a -t x "$binary" | grep -F -C 3 "$build_root" || true
           echo "::endgroup::"

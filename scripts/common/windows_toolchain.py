@@ -14,6 +14,14 @@ def _vcvars_command_line(comspec: str, vcvars: Path) -> str:
     return f'"{comspec}" /d /s /c ""{vcvars}" >nul && set"'
 
 
+def _windows_environment_value(environment: dict[str, str], name: str) -> str:
+    folded_name = name.casefold()
+    for key, value in reversed(tuple(environment.items())):
+        if key.casefold() == folded_name:
+            return value
+    return ""
+
+
 def discover_visual_studio_environment(
     base_environment: dict[str, str] | None = None,
     *,
@@ -60,8 +68,12 @@ def discover_visual_studio_environment(
         key, separator, value = line.partition("=")
         if separator and key:
             environment[key] = value
-    tools = environment.get("VCToolsVersion", "").strip().rstrip("\\/")
-    windows_sdk = environment.get("WindowsSDKVersion", "").strip().rstrip("\\/")
+    tools = _windows_environment_value(
+        environment, "VCToolsVersion"
+    ).strip().rstrip("\\/")
+    windows_sdk = _windows_environment_value(
+        environment, "WindowsSDKVersion"
+    ).strip().rstrip("\\/")
     if not tools or not windows_sdk:
         raise RuntimeError("VS2022 environment has incomplete toolchain identity")
     return environment, {"compiler": f"MSVC {tools}", "windowsSdk": windows_sdk}
