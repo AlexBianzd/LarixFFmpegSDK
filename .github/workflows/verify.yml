@@ -89,6 +89,25 @@ jobs:
           python-version: '3.13'
       - name: Build and verify macOS arm64 SDK
         run: ./scripts/build-macos.sh --profile ${{ matrix.profile }} --configuration Release --output-root build/macos-${{ matrix.profile }}
+      - name: Diagnose embedded macOS build path
+        if: failure()
+        shell: bash
+        run: |
+          binary="build/macos-${{ matrix.profile }}/stage/bin/ffprobe"
+          build_root="$PWD/build/macos-${{ matrix.profile }}/build"
+          [[ -f "$binary" ]] || exit 0
+          echo "::group::matching strings"
+          strings -a -t x "$binary" | grep -F -C 3 "$build_root" || true
+          echo "::endgroup::"
+          echo "::group::Mach-O load commands"
+          otool -l "$binary" | grep -F -C 6 "$build_root" || true
+          echo "::endgroup::"
+          echo "::group::DWARF info"
+          xcrun dwarfdump --debug-info "$binary" | grep -F -C 6 "$build_root" || true
+          echo "::endgroup::"
+          echo "::group::DWARF line table"
+          xcrun dwarfdump --debug-line "$binary" | grep -F -C 6 "$build_root" || true
+          echo "::endgroup::"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: macos-arm64-${{ matrix.profile }}
