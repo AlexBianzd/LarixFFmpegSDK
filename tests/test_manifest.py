@@ -18,8 +18,8 @@ from scripts.common.release_manifest import (
 LOCK = {
     "schemaVersion": 1,
     "upstreamVersion": "9.0.1",
-    "packagingRevision": 1,
-    "releaseTag": "ffmpeg-9.0.1-larix.1",
+    "packagingRevision": 2,
+    "releaseTag": "ffmpeg-9.0.1-larix.2",
     "source": {
         "url": "https://ffmpeg.org/releases/ffmpeg-9.0.1.tar.xz",
         "archive": "ffmpeg-9.0.1.tar.xz",
@@ -92,6 +92,10 @@ def create_sdk(root: Path, profile: str = 'lgpl') -> None:
         'share/larix-ffmpeg-sdk/provenance/patches/README.md': (
             repository / 'patches' / '9.0.1' / 'README.md').read_bytes(),
     })
+    for patch in sorted((repository / 'patches' / '9.0.1').glob('*.patch')):
+        files[
+            'share/larix-ffmpeg-sdk/provenance/patches/' + patch.name
+        ] = patch.read_bytes()
     for relative, content in files.items():
         path = root / relative
         path.parent.mkdir(parents=True, exist_ok=True)

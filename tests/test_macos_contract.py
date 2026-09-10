@@ -64,6 +64,10 @@ def create_macos_sdk(root: Path, profile: str = "lgpl") -> None:
             REPOSITORY_ROOT / "patches" / "9.0.1" / "README.md"
         ).read_bytes(),
     }
+    for patch in sorted((REPOSITORY_ROOT / "patches" / "9.0.1").glob("*.patch")):
+        files[
+            "share/larix-ffmpeg-sdk/provenance/patches/" + patch.name
+        ] = patch.read_bytes()
     for relative, payload in files.items():
         path = root / relative
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -287,6 +291,9 @@ class MacOSConsumerContractTests(unittest.TestCase):
         self.assertIn("scripts/platforms/macos/inspect.sh", source)
         self.assertIn("DYLD_LIBRARY_PATH", source)
         self.assertIn('sdk / "bin" / "ffprobe"', source)
+        self.assertIn('"-DCMAKE_BUILD_TYPE=Release"', source)
+        self.assertIn('_required_tool("ctest"', source)
+        self.assertIn('"--no-tests=error"', source)
 
 
 if __name__ == "__main__":

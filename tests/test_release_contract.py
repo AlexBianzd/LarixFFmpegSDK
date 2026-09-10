@@ -90,7 +90,7 @@ class ReleaseCandidateContractTests(unittest.TestCase):
             side_effect=self._manifest,
         ):
             with self.assertRaises(ValueError):
-                verify_release_directory(self.root, "ffmpeg-9.0.1-larix.2", REPOSITORY_ROOT)
+                verify_release_directory(self.root, "ffmpeg-9.0.1-larix.3", REPOSITORY_ROOT)
 
             sdk = next(path for path in self.root.iterdir() if path.suffix == ".zip")
             original = sdk.read_bytes()
@@ -185,7 +185,7 @@ class ReleaseWorkflowContractTests(unittest.TestCase):
         workflow = (REPOSITORY_ROOT / ".github/workflows/release.yml").read_text(
             encoding="utf-8"
         )
-        self.assertIn("ffmpeg-9.0.1-larix.1", workflow)
+        self.assertIn("ffmpeg-9.0.1-larix.2", workflow)
         self.assertRegex(workflow, r"(?m)^  workflow_dispatch:\s*$")
         self.assertIn("artifact_run_id:", workflow)
         self.assertIn("  catalog-from-run:", workflow)
@@ -197,7 +197,7 @@ class ReleaseWorkflowContractTests(unittest.TestCase):
         self.assertIn("name: release-candidate", workflow)
         self.assertIn("needs: catalog", workflow)
         self.assertIn(
-            "github.ref == 'refs/tags/ffmpeg-9.0.1-larix.1'", workflow
+            "github.ref == 'refs/tags/ffmpeg-9.0.1-larix.2'", workflow
         )
         self.assertIn("gh release create", workflow)
         self.assertNotIn("--clobber", workflow)

@@ -191,11 +191,11 @@ class ConfigureCompositionTests(unittest.TestCase):
         lock = load_lock(LOCK_PATH)
         self.assertEqual(
             target_asset_name(lock, "lgpl", WINDOWS_TARGET),
-            "larix-ffmpeg-sdk-9.0.1-larix.1-lgpl-windows-x64-msvc.zip",
+            "larix-ffmpeg-sdk-9.0.1-larix.2-lgpl-windows-x64-msvc.zip",
         )
         self.assertEqual(
             target_asset_name(lock, "gpl", MACOS_TARGET),
-            "larix-ffmpeg-sdk-9.0.1-larix.1-gpl-macos-arm64.tar.xz",
+            "larix-ffmpeg-sdk-9.0.1-larix.2-gpl-macos-arm64.tar.xz",
         )
 
     def assert_profile_rejected(self, profile: str, contents: str) -> None:
