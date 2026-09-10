@@ -197,11 +197,14 @@ class ReleaseContractReviewTests(unittest.TestCase):
         self.assertEqual(manifest["assetName"], "larix-ffmpeg-sdk-9.0.1-larix.2-lgpl-windows-x64-msvc.zip")
         self.assertEqual(set(manifest["libraryVersions"]), {"avutil", "avcodec", "avformat", "swresample", "swscale"})
         self.assertEqual(manifest["toolchain"], {"compiler": "MSVC 19.44", "windowsSdk": "10.0.26100.0"})
-        patch = REPOSITORY_ROOT / "patches/9.0.1/0001-video-presentation-evidence.patch"
+        patches = [REPOSITORY_ROOT / "patches/9.0.1" / name for name in (
+            "0001-video-presentation-evidence.patch",
+            "0002-ffv1-presentation-evidence.patch",
+        )]
         self.assertEqual(
             manifest["patches"],
             [{"path": patch.name, "sha256": hashlib.sha256(
-                patch.read_bytes()).hexdigest()}],
+                patch.read_bytes()).hexdigest()} for patch in patches],
         )
         self.assertIn("--toolchain=msvc", manifest["configureArgs"])
         self.assertEqual(set(manifest["runtimeDependencies"]), set(manifest_runtime()))
