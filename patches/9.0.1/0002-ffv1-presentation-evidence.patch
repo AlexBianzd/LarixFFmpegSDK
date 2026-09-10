@@ -1,0 +1,215 @@
+diff --git a/libavcodec/ffv1.h b/libavcodec/ffv1.h
+index 012b92e..259f60a 100644
+--- a/libavcodec/ffv1.h
++++ b/libavcodec/ffv1.h
+@@ -98,6 +98,12 @@ typedef struct FFV1SliceContext {
+         struct {
+             int slice_reset_contexts;
+             int slice_damaged;
++            /* Picture-local observations; written only by this slice's worker. */
++            uint32_t presentation_structure;
++            int presentation_header;
++            int presentation_decoded;
++            int presentation_sx, presentation_sy;
++            int presentation_sw, presentation_sh;
+         };
+ 
+         // encoder-only
+diff --git a/libavcodec/ffv1dec.c b/libavcodec/ffv1dec.c
+index 8de15d2..f2d255a 100644
+--- a/libavcodec/ffv1dec.c
++++ b/libavcodec/ffv1dec.c
+@@ -29,6 +29,7 @@
+ #include "libavutil/crc.h"
+ #include "libavutil/mem.h"
+ #include "libavutil/imgutils.h"
++#include "libavutil/larix_video_presentation.h"
+ #include "libavutil/pixdesc.h"
+ #include "avcodec.h"
+ #include "codec_internal.h"
+@@ -226,6 +227,7 @@ static int decode_slice_header(const FFV1Context *f,
+     }
+ 
+     ps = ff_ffv1_get_symbol(c, state, 0);
++    sc->presentation_structure = ps;
+     if (ps == 1) {
+         frame->flags |= AV_FRAME_FLAG_INTERLACED;
+         frame->flags |= AV_FRAME_FLAG_TOP_FIELD_FIRST;
+@@ -273,6 +275,11 @@ static int decode_slice_header(const FFV1Context *f,
+         }
+     }
+ 
++    sc->presentation_sx = sx;
++    sc->presentation_sy = sy;
++    sc->presentation_sw = sw;
++    sc->presentation_sh = sh;
++    sc->presentation_header = c->overread <= MAX_OVERREAD;
+     return 0;
+ }
+ 
+@@ -511,20 +518,20 @@ static int decode_slice(AVCodecContext *c, void *arg)
+         const int chroma_height = AV_CEIL_RSHIFT(height, f->chroma_v_shift);
+         const int cx            = x >> f->chroma_h_shift;
+         const int cy            = y >> f->chroma_v_shift;
+-        decode_plane(f, sc, &gb, p->data[0] + ps*x + y*p->linesize[0], width, height, p->linesize[0], 0, 0, 1, ac);
++        ret = decode_plane(f, sc, &gb, p->data[0] + ps*x + y*p->linesize[0], width, height, p->linesize[0], 0, 0, 1, ac);
+ 
+         if (f->chroma_planes) {
+-            decode_plane(f, sc, &gb, p->data[1] + ps*cx+cy*p->linesize[1], chroma_width, chroma_height, p->linesize[1], 1, 1, 1, ac);
+-            decode_plane(f, sc, &gb, p->data[2] + ps*cx+cy*p->linesize[2], chroma_width, chroma_height, p->linesize[2], 1, 2, 1, ac);
++            ret |= decode_plane(f, sc, &gb, p->data[1] + ps*cx+cy*p->linesize[1], chroma_width, chroma_height, p->linesize[1], 1, 1, 1, ac);
++            ret |= decode_plane(f, sc, &gb, p->data[2] + ps*cx+cy*p->linesize[2], chroma_width, chroma_height, p->linesize[2], 1, 2, 1, ac);
+         }
+         if (f->transparency)
+-            decode_plane(f, sc, &gb, p->data[3] + ps*x + y*p->linesize[3], width, height, p->linesize[3], (f->version >= 4 && !f->chroma_planes) ? 1 : 2,
++            ret |= decode_plane(f, sc, &gb, p->data[3] + ps*x + y*p->linesize[3], width, height, p->linesize[3], (f->version >= 4 && !f->chroma_planes) ? 1 : 2,
+                                                                                                           (f->version >= 4 && !f->chroma_planes) ? 1 : 3, 1, ac);
+     } else if (f->colorspace == 0) {
+-         decode_plane(f, sc, &gb, p->data[0] + ps*x + y*p->linesize[0]          , width, height, p->linesize[0], 0, 0, 2, ac);
+-         decode_plane(f, sc, &gb, p->data[0] + ps*x + y*p->linesize[0] + (ps>>1), width, height, p->linesize[0], 1, 1, 2, ac);
++         ret = decode_plane(f, sc, &gb, p->data[0] + ps*x + y*p->linesize[0]          , width, height, p->linesize[0], 0, 0, 2, ac);
++         ret |= decode_plane(f, sc, &gb, p->data[0] + ps*x + y*p->linesize[0] + (ps>>1), width, height, p->linesize[0], 1, 1, 2, ac);
+     } else if (f->bayer) {
+-        decode_bayer_frame(f, sc, &gb, p->data[0] + ps * x + y * p->linesize[0],
++        ret = decode_bayer_frame(f, sc, &gb, p->data[0] + ps * x + y * p->linesize[0],
+                            width, height, p->linesize[0]);
+     } else if (f->use32bit) {
+         uint8_t *planes[4] = { p->data[0] + ps * x + y * p->linesize[0],
+@@ -532,7 +539,7 @@ static int decode_slice(AVCodecContext *c, void *arg)
+                                p->data[2] + ps * x + y * p->linesize[2] };
+         if (f->transparency)
+             planes[3] =        p->data[3] + ps * x + y * p->linesize[3];
+-        decode_rgb_frame32(f, sc, &gb, planes, width, height, p->linesize);
++        ret = decode_rgb_frame32(f, sc, &gb, planes, width, height, p->linesize);
+     } else {
+         uint8_t *planes[4] = { p->data[0] + ps * x + y * p->linesize[0] };
+         if (f->avctx->bits_per_raw_sample > 8) {
+@@ -541,7 +548,7 @@ static int decode_slice(AVCodecContext *c, void *arg)
+             if (f->transparency)
+                 planes[3] =    p->data[3] + ps * x + y * p->linesize[3];
+         }
+-        decode_rgb_frame(f, sc, &gb, planes, width, height, p->linesize);
++        ret = decode_rgb_frame(f, sc, &gb, planes, width, height, p->linesize);
+     }
+     if (ac != AC_GOLOMB_RICE && f->version > 2) {
+         int v;
+@@ -553,6 +560,9 @@ static int decode_slice(AVCodecContext *c, void *arg)
+         }
+     }
+ 
++    sc->presentation_decoded = ret >= 0 &&
++        (ac != AC_GOLOMB_RICE ? sc->c.overread <= MAX_OVERREAD : get_bits_left(&gb) >= 0);
++
+     if (sc->slice_damaged && (f->avctx->err_recognition & AV_EF_EXPLODE))
+         return AVERROR_INVALIDDATA;
+ 
+@@ -811,6 +821,9 @@ static int decode_slices(AVCodecContext *avctx, RangeCoder c,
+         buf_end -= len;
+ 
+         sc->slice_damaged = 0;
++        sc->presentation_header = 0;
++        sc->presentation_decoded = 0;
++        sc->presentation_structure = 0;
+ 
+         if (f->ec) {
+             unsigned crc = av_crc(av_crc_get_table(AV_CRC_32_IEEE), f->crcref, pos, len);
+@@ -878,6 +891,86 @@ static int decode_slices(AVCodecContext *avctx, RangeCoder c,
+     return 0;
+ }
+ 
++static int attach_presentation(FFV1Context *f, int software)
++{
++    AVLarixVideoPresentationV1 record = {
++        .version = AV_LARIX_VIDEO_PRESENTATION_VERSION_1,
++        .byte_size = sizeof(record),
++        .syntax = AV_LARIX_VIDEO_PRESENTATION_SYNTAX_FFV1,
++    };
++    AVLarixFFV1PresentationV1 *facts = &record.facts.ffv1;
++    AVFrameSideData *sd;
++    uint8_t covered[MAX_SLICES] = { 0 };
++    int complete = software;
++
++    facts->present = AV_LARIX_FFV1_PRESENT_VERSION;
++    facts->version = f->version;
++    if (f->version > 2) {
++        facts->present |= AV_LARIX_FFV1_PRESENT_MICRO_VERSION;
++        facts->micro_version = f->micro_version;
++    }
++    /* Map explicitly: avutil's public grammar does not import AVFieldOrder. */
++    switch (f->avctx->field_order) {
++    case AV_FIELD_UNKNOWN:     facts->supplied_field_order = 0; break;
++    case AV_FIELD_PROGRESSIVE: facts->supplied_field_order = 1; break;
++    case AV_FIELD_TT:          facts->supplied_field_order = 2; break;
++    case AV_FIELD_BB:          facts->supplied_field_order = 3; break;
++    case AV_FIELD_TB:          facts->supplied_field_order = 4; break;
++    case AV_FIELD_BT:          facts->supplied_field_order = 5; break;
++    default: goto no_context_order;
++    }
++    facts->present |= AV_LARIX_FFV1_PRESENT_SUPPLIED_FIELD_ORDER;
++no_context_order:
++
++    /* Workers own separate observations. Never consult shared predecessor
++     * damage flags here: frame threads may already have taken ownership. */
++    if (software) {
++        for (int i = 0; i < f->slice_count; i++) {
++            const FFV1SliceContext *sc = &f->slices[i];
++            if (!sc->presentation_decoded || sc->slice_damaged) {
++                complete = 0;
++                record.qualifiers |= AV_LARIX_VIDEO_PRESENTATION_QUALIFIER_INCOMPLETE_SYNTAX;
++                if (sc->slice_damaged)
++                    record.qualifiers |= AV_LARIX_VIDEO_PRESENTATION_QUALIFIER_RECOVERED_SYNTAX;
++            }
++            if (f->version <= 2)
++                continue;
++            if (!sc->presentation_header) {
++                complete = 0;
++                continue;
++            }
++            if (sc->presentation_structure != f->slices[0].presentation_structure)
++                complete = 0;
++            for (int y = sc->presentation_sy; y < sc->presentation_sy + sc->presentation_sh; y++) {
++                for (int x = sc->presentation_sx; x < sc->presentation_sx + sc->presentation_sw; x++) {
++                    int cell = y * f->num_h_slices + x;
++                    if (covered[cell])
++                        complete = 0;
++                    covered[cell] = 1;
++                }
++            }
++        }
++    }
++    if (f->version > 2) {
++        for (int i = 0; i < f->num_h_slices * f->num_v_slices; i++)
++            if (!covered[i])
++                complete = 0;
++        if (complete) {
++            facts->present |= AV_LARIX_FFV1_PRESENT_PICTURE_STRUCTURE;
++            facts->picture_structure = f->slices[0].presentation_structure;
++        } else {
++            record.qualifiers |= AV_LARIX_VIDEO_PRESENTATION_QUALIFIER_INCOMPLETE_SYNTAX;
++        }
++    }
++
++    sd = av_frame_new_side_data(f->picture.f, AV_FRAME_DATA_LARIX_VIDEO_PRESENTATION,
++                                sizeof(record));
++    if (!sd)
++        return AVERROR(ENOMEM);
++    memcpy(sd->data, &record, sizeof(record));
++    return 0;
++}
++
+ static int decode_frame(AVCodecContext *avctx, AVFrame *rframe,
+                         int *got_frame, AVPacket *avpkt)
+ {
+@@ -976,7 +1069,12 @@ static int decode_frame(AVCodecContext *avctx, AVFrame *rframe,
+             return ret;
+     }
+ 
++    /* ProgressFrame references share the AVFrame itself until completion.
++     * Publish properties before the completion barrier and output reference. */
++    ret = attach_presentation(f, !hwaccel);
+     ff_progress_frame_report(&f->picture, INT_MAX);
++    if (ret < 0)
++        return ret;
+ 
+     ff_progress_frame_unref(&f->last_picture);
+     av_refstruct_unref(&f->hwaccel_last_picture_private);
