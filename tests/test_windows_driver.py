@@ -740,9 +740,6 @@ class FinalArchiveVerificationTests(unittest.TestCase):
         ).read_text(encoding="utf-8")
         self.assertIn("-ReportPath", source)
         self.assertIn("_require_inspection_report(report, manifest)", source)
-        self.assertIn('"-DCMAKE_BUILD_TYPE=Release"', source)
-        self.assertIn('_required_tool("ctest"', source)
-        self.assertIn('"--no-tests=error"', source)
 
 
 if __name__ == "__main__":

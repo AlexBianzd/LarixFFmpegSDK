@@ -14,8 +14,8 @@
   "properties": {
     "schemaVersion": { "const": 1 },
     "upstreamVersion": { "const": "9.0.1" },
-    "packagingRevision": { "type": "integer", "const": 2, "minimum": 1 },
-    "releaseTag": { "const": "ffmpeg-9.0.1-larix.2" },
+    "packagingRevision": { "type": "integer", "const": 1, "minimum": 1 },
+    "releaseTag": { "const": "ffmpeg-9.0.1-larix.1" },
     "source": {
       "type": "object",
       "additionalProperties": false,
