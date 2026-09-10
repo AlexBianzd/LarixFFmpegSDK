@@ -37,6 +37,7 @@ def create_macos_sdk(root: Path, profile: str = "lgpl") -> None:
             f"include/lib{component}/{component}.h": f"{component}\n".encode("ascii")
             for component in COMPONENTS
         },
+        "include/libavutil/larix_video_presentation.h": b"presentation\n",
         "lib/cmake/LarixFFmpegSDK/LarixFFmpegSDKConfig.cmake": b"config\n",
         "LICENSES/FFmpeg-LICENSE.md": b"FFmpeg license\n",
         f"LICENSES/{license_file}": b"license\n",
@@ -211,6 +212,43 @@ class TarXzPackageContractTests(unittest.TestCase):
 
 
 class MacOSReleaseManifestContractTests(unittest.TestCase):
+    def test_rejects_missing_presentation_header(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            sdk = Path(temporary) / "sdk"
+            create_macos_sdk(sdk)
+            (
+                sdk / "include" / "libavutil" /
+                "larix_video_presentation.h"
+            ).unlink(missing_ok=True)
+            dependencies = {
+                path: (
+                    ["/usr/lib/libSystem.B.dylib"]
+                    if path == "bin/ffprobe"
+                    else [
+                        "@rpath/" + Path(path).name,
+                        "/usr/lib/libSystem.B.dylib",
+                    ]
+                )
+                for path in MACOS_RUNTIME_FILES
+            }
+            with self.assertRaisesRegex(
+                ValueError,
+                "missing required files.*include/libavutil/larix_video_presentation.h",
+            ):
+                generate_release_metadata(
+                    sdk,
+                    REPOSITORY_ROOT,
+                    "lgpl",
+                    MACOS_TARGET,
+                    toolchain={
+                        "compiler": "Apple clang version 17.0.0",
+                        "xcode": "Xcode 16.4",
+                        "macosSdk": "15.5",
+                    },
+                    runtime_dependencies=dependencies,
+                    forbidden_paths=(str(sdk.parent),),
+                )
+
     def test_manifest_binds_macos_runtime_toolchain_and_package_identity(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             sdk = Path(temporary) / "sdk"

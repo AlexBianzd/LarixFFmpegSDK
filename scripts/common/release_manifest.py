@@ -388,6 +388,7 @@ def _validate_payload_contract(
         raise ValueError("SDK inventory contains duplicate paths")
     required = {
         *(f"include/lib{component}/{component}.h" for component in COMPONENTS),
+        "include/libavutil/larix_video_presentation.h",
         "lib/cmake/LarixFFmpegSDK/LarixFFmpegSDKConfig.cmake",
         "share/larix-ffmpeg-sdk/source.json",
         "share/larix-ffmpeg-sdk/build.json",
