@@ -206,6 +206,7 @@ def verify_sdk_archive(archive: Path, repo_root: Path) -> dict[str, object]:
         subprocess.run(
             [
                 cmake, "-S", str(repo_root / "tests" / "consumer"), "-B", str(build),
+                "-DCMAKE_BUILD_TYPE=Release",
                 f"-DLarixFFmpegSDK_DIR={sdk / 'lib' / 'cmake' / 'LarixFFmpegSDK'}",
             ],
             check=True,
@@ -225,6 +226,18 @@ def verify_sdk_archive(archive: Path, repo_root: Path) -> dict[str, object]:
         if executable is None:
             raise RuntimeError("CMake consumer executable was not produced")
         subprocess.run([str(executable), str(video)], check=True, env=environment)
+        ctest = _required_tool("ctest", environment, environment.get("LARIX_CTEST"))
+        subprocess.run(
+            [
+                ctest,
+                "--test-dir", str(build),
+                "-C", "Release",
+                "--output-on-failure",
+                "--no-tests=error",
+            ],
+            check=True,
+            env=environment,
+        )
         return manifest
 
 

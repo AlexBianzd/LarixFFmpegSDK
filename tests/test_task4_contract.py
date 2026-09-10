@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 from pathlib import Path
 import tempfile
@@ -191,12 +192,17 @@ class ReleaseContractReviewTests(unittest.TestCase):
             runtime_dependencies={path: ["KERNEL32.dll"] for path in manifest_runtime()},
             forbidden_paths=(str(self.sdk.parent),),
         )
-        self.assertEqual(manifest["packagingRevision"], 1)
+        self.assertEqual(manifest["packagingRevision"], 2)
         self.assertEqual(manifest["packageFormat"], "zip")
-        self.assertEqual(manifest["assetName"], "larix-ffmpeg-sdk-9.0.1-larix.1-lgpl-windows-x64-msvc.zip")
+        self.assertEqual(manifest["assetName"], "larix-ffmpeg-sdk-9.0.1-larix.2-lgpl-windows-x64-msvc.zip")
         self.assertEqual(set(manifest["libraryVersions"]), {"avutil", "avcodec", "avformat", "swresample", "swscale"})
         self.assertEqual(manifest["toolchain"], {"compiler": "MSVC 19.44", "windowsSdk": "10.0.26100.0"})
-        self.assertEqual(manifest["patches"], [])
+        patch = REPOSITORY_ROOT / "patches/9.0.1/0001-video-presentation-evidence.patch"
+        self.assertEqual(
+            manifest["patches"],
+            [{"path": patch.name, "sha256": hashlib.sha256(
+                patch.read_bytes()).hexdigest()}],
+        )
         self.assertIn("--toolchain=msvc", manifest["configureArgs"])
         self.assertEqual(set(manifest["runtimeDependencies"]), set(manifest_runtime()))
         self.assertEqual(verify_release_metadata(self.sdk, REPOSITORY_ROOT), manifest)
@@ -205,8 +211,8 @@ class ReleaseContractReviewTests(unittest.TestCase):
         original = json.loads(manifest_path.read_text(encoding="utf-8"))
         mutations = {
             "source": {**original["source"], "sha256": "0" * 64},
-            "packagingRevision": 2,
-            "releaseTag": "ffmpeg-9.0.1-larix.2",
+            "packagingRevision": 3,
+            "releaseTag": "ffmpeg-9.0.1-larix.3",
             "licenseProfile": "gpl",
             "assetName": "wrong.zip",
             "packageFormat": "tar.xz",
