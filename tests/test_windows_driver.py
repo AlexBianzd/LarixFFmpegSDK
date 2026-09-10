@@ -28,6 +28,7 @@ REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 STABLE_ROOT_HELPER = REPOSITORY_ROOT / "scripts" / "platforms" / "windows" / "stable_build_root.ps1"
 
 
+@unittest.skipUnless(os.name == "nt", "requires native Windows drive mapping")
 class StableBuildRootTests(unittest.TestCase):
     def _powershell(self, command: str) -> subprocess.CompletedProcess[str]:
         return subprocess.run(
@@ -149,6 +150,7 @@ class StableBuildRootTests(unittest.TestCase):
 
 
 class WindowsToolchainTests(unittest.TestCase):
+    @unittest.skipUnless(os.name == "nt", "requires native Windows cmd.exe")
     def test_vcvars_raw_command_line_preserves_a_bat_path_with_spaces(self) -> None:
         with tempfile.TemporaryDirectory(prefix="larix vcvars ") as temporary:
             vcvars = Path(temporary) / "fake vcvars64.bat"
@@ -290,6 +292,7 @@ class WindowsWrapperTests(unittest.TestCase):
             check=False, capture_output=True, text=True,
             env=self._proxy_environment())
 
+    @unittest.skipUnless(os.name == "nt", "requires native Windows cmd.exe")
     def test_localized_msvc_proxy_only_intercepts_configure_identity_probes(self) -> None:
         for arguments in ((), ("-nologo-",)):
             with self.subTest(arguments=arguments):
@@ -443,6 +446,9 @@ class WindowsWrapperTests(unittest.TestCase):
         self.assertIn("'ffprobe.exe' = 'ffprobe_g.pdb'", source)
         self.assertIn("('bin/' + $component + '.lib')", source)
         self.assertNotIn("('lib/' + $component + '.lib')", source)
+
+    @unittest.skipUnless(os.name == "nt", "requires Windows PowerShell")
+    def test_locked_runtime_inventory_round_trips_through_powershell(self) -> None:
         command = (
             f"& '{os.sys.executable}' -c "
             "'import json; from scripts.common.release_manifest import "
@@ -478,6 +484,9 @@ class WindowsWrapperTests(unittest.TestCase):
         self.assertNotIn(
             "$configure = @($configureJson | ConvertFrom-Json)", source
         )
+
+    @unittest.skipUnless(os.name == "nt", "requires Windows PowerShell")
+    def test_configure_json_round_trips_through_powershell(self) -> None:
         command = (
             "$json=@('--a','--b')|ConvertTo-Json -Compress; "
             "[string[]]$values=$json|ConvertFrom-Json; "
@@ -585,6 +594,7 @@ class WindowsWrapperTests(unittest.TestCase):
         readme = (REPOSITORY_ROOT / "README.md").read_text(encoding="utf-8")
         self.assertIn("MSYS2 Bash, GNU make and diffutils", readme)
 
+    @unittest.skipUnless(os.name == "nt", "requires Windows PowerShell")
     def test_default_output_root_follows_the_selected_profile(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
