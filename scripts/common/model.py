@@ -10,8 +10,8 @@ from typing import Any
 _EXPECTED = {
     "schemaVersion": 1,
     "upstreamVersion": "9.0.1",
-    "packagingRevision": 2,
-    "releaseTag": "ffmpeg-9.0.1-larix.2",
+    "packagingRevision": 1,
+    "releaseTag": "ffmpeg-9.0.1-larix.1",
     "source": {
         "url": "https://ffmpeg.org/releases/ffmpeg-9.0.1.tar.xz",
         "archive": "ffmpeg-9.0.1.tar.xz",

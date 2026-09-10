@@ -10,7 +10,7 @@ on:
         default: ''
   push:
     tags:
-      - ffmpeg-9.0.1-larix.2
+      - ffmpeg-9.0.1-larix.1
 
 permissions:
   actions: read
@@ -103,7 +103,7 @@ jobs:
         run: >-
           python -m scripts.common.verify_release
           --asset-directory build/release-candidate
-          --tag ffmpeg-9.0.1-larix.2
+          --tag ffmpeg-9.0.1-larix.1
           --download-source --assemble
       - uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4
         with:
@@ -132,7 +132,7 @@ jobs:
         run: >-
           python -m scripts.common.verify_release
           --asset-directory build/release-candidate
-          --tag ffmpeg-9.0.1-larix.2
+          --tag ffmpeg-9.0.1-larix.1
           --download-source --assemble
       - uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4
         with:
@@ -143,7 +143,7 @@ jobs:
 
   publish:
     needs: catalog
-    if: github.event_name == 'push' && github.ref == 'refs/tags/ffmpeg-9.0.1-larix.2'
+    if: github.event_name == 'push' && github.ref == 'refs/tags/ffmpeg-9.0.1-larix.1'
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     permissions:
@@ -163,5 +163,5 @@ jobs:
           fi
           gh release create "$GITHUB_REF_NAME" build/release-candidate/* \
             --repo "$GITHUB_REPOSITORY" --verify-tag \
-            --title "Larix FFmpeg SDK 9.0.1 revision 2" \
+            --title "Larix FFmpeg SDK 9.0.1 revision 1" \
             --notes "Verified LGPL/GPL SDKs for Windows x64 MSVC and macOS arm64 (minimum macOS 12.0)."

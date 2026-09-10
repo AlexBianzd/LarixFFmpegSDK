@@ -33,7 +33,7 @@
     },
     "licenseProfile": {"enum": ["lgpl", "gpl"]},
     "packageFormat": {"enum": ["zip", "tar.xz"]},
-    "packagingRevision": {"const": 2},
+    "packagingRevision": {"const": 1},
     "patches": {
       "items": {
         "additionalProperties": false,
@@ -46,7 +46,7 @@
       },
       "type": "array"
     },
-    "releaseTag": {"const": "ffmpeg-9.0.1-larix.2"},
+    "releaseTag": {"const": "ffmpeg-9.0.1-larix.1"},
     "runtimeDependencies": {
       "additionalProperties": false,
       "properties": {
