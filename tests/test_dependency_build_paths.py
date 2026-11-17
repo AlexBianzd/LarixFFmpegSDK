@@ -13,3 +13,7 @@ class CMakePathTests(unittest.TestCase):
   self.assertTrue(callable(normalize),'build evidence normalization is missing')
   got=normalize([{'argv':['C:/Tools/cmake.exe','-DZIMG_SOURCE=D:/a/sdk/build/deps/sources/zimg'],'cwd':'D:\\a\\sdk\\build\\deps'}],PureWindowsPath('D:/a/sdk'),PureWindowsPath('D:/a/sdk/build/deps'))
   self.assertEqual(got,[{'argv':['cmake.exe','-DZIMG_SOURCE=${DEPENDENCIES}/sources/zimg'],'cwd':'${DEPENDENCIES}'}])
+
+ def test_msys_drive_paths_are_not_embedded_in_release_evidence(self):
+  got=build.normalize_build_evidence([{'argv':['C:/msys64/usr/bin/bash.exe','/d/a/sdk/build/deps/sources/x264/configure'],'cwd':'D:/a/sdk/build/deps'}],PureWindowsPath('D:/a/sdk'),PureWindowsPath('D:/a/sdk/build/deps'))
+  self.assertEqual(got,[{'argv':['bash.exe','${DEPENDENCIES}/sources/x264/configure'],'cwd':'${DEPENDENCIES}'}])

@@ -75,7 +75,7 @@ foreach ($relative in $expectedPe) {
     $resolvedDependencies[$relative] = @($resolved | Sort-Object -Unique)
 }
 $expectedImportLibraries = @(
-    'lib/avcodec.lib', 'lib/avformat.lib', 'lib/avutil.lib',
+    'lib/avcodec.lib', 'lib/avfilter.lib', 'lib/avformat.lib', 'lib/avutil.lib',
     'lib/swresample.lib', 'lib/swscale.lib'
 )
 $actualLibraries = @(Get-ChildItem -LiteralPath (Join-Path $root 'lib') -File -Filter '*.lib' | ForEach-Object {

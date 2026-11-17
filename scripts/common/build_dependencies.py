@@ -11,7 +11,13 @@ def cmake_arguments(arguments: list) -> list[str]:
     return [str(value).replace('\\','/') for value in arguments]
 
 def normalize_build_evidence(commands: list[dict], repo: Path, output: Path) -> list[dict]:
-    aliases=sorted([(str(repo).replace('\\','/'),'${REPO}'),(str(output).replace('\\','/'),'${DEPENDENCIES}')],key=lambda item:-len(item[0]))
+    aliases=[]
+    for root,alias in [(repo,'${REPO}'),(output,'${DEPENDENCIES}')]:
+        path=str(root).replace('\\','/')
+        aliases.append((path,alias))
+        if len(path)>2 and path[1:3]==':/':
+            aliases.append(('/'+path[0].lower()+path[2:],alias))
+    aliases.sort(key=lambda item:-len(item[0]))
     def normalize(value):
         if isinstance(value,str):
             value=value.replace('\\','/')
