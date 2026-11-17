@@ -69,6 +69,9 @@ def create_macos_sdk(root: Path, profile: str = "lgpl") -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(payload)
 
+    from scripts.common.dependencies import stage_dependency_provenance
+    stage_dependency_provenance(Path(__file__).resolve().parents[1], root, profile)
+
 
 class MacOSDriverContractTests(unittest.TestCase):
     def test_repository_owns_the_public_and_platform_macos_drivers(self) -> None:

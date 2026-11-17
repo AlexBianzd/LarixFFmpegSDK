@@ -10,6 +10,8 @@ import tempfile
 import urllib.parse
 import urllib.request
 
+from scripts.common.dependencies import load_dependency_lock
+from scripts.common.source import _download
 from scripts.common.model import load_lock, load_target, target_asset_name
 from scripts.common.package import extract_package
 from scripts.common.release_manifest import verify_release_metadata
@@ -63,6 +65,7 @@ def expected_release_asset_names(
     if profiles != ["lgpl", "gpl"]:
         raise ValueError("release profile matrix is invalid")
     names = {source["archive"]}
+    names.update(e["source"]["archive"] for e in load_dependency_lock(repo_root)["dependencies"])
     for target_id in _TARGET_IDS:
         target = load_target(repo_root / "config" / "targets" / f"{target_id}.json")
         for profile in profiles:
@@ -165,8 +168,14 @@ def assemble_release_candidate(
         raise ValueError("release candidate payload inventory is not exact")
     source_name = str(lock["source"]["archive"])
     _verify_source(root / source_name, lock)
+    dependency_sources=load_dependency_lock(repo_root)['dependencies']
+    source_names={source_name}
     entries = [_catalog_asset(root / source_name, "source")]
-    for name in sorted(expected - {source_name}):
+    for entry in dependency_sources:
+        name=entry['source']['archive'];source_names.add(name)
+        _verify_source(root/name,{'source':entry['source']})
+        entries.append(_catalog_asset(root/name,'dependency-source'))
+    for name in sorted(expected - source_names):
         archive = root / name
         manifest = _verify_sdk_archive(archive, repo_root)
         profile, target_id = _verify_sdk_identity(
@@ -176,7 +185,8 @@ def assemble_release_candidate(
     catalog: dict[str, object] = {
         "assets": sorted(entries, key=lambda entry: str(entry["name"])),
         "releaseTag": tag,
-        "schemaVersion": 1,
+        "schemaVersion": 2,
+        "dependencySources": [{"name":e["name"],"source":e["source"]} for e in dependency_sources],
         "source": lock["source"],
     }
     (root / RELEASE_CATALOG).write_bytes(_canonical_json(catalog))
@@ -210,10 +220,10 @@ def verify_release_directory(
         raise ValueError("release asset inventory is not exact")
     _verify_sums(root, payload | {RELEASE_CATALOG})
     catalog = _load_json(root / RELEASE_CATALOG)
-    if set(catalog) != {"assets", "releaseTag", "schemaVersion", "source"}:
+    if set(catalog) != {"assets", "releaseTag", "schemaVersion", "source", "dependencySources"}:
         raise ValueError("release catalog fields are invalid")
     if (
-        catalog.get("schemaVersion") != 1
+        catalog.get("schemaVersion") != 2
         or catalog.get("releaseTag") != tag
         or catalog.get("source") != lock.get("source")
         or not isinstance(catalog.get("assets"), list)
@@ -225,8 +235,16 @@ def verify_release_directory(
         raise ValueError("release catalog asset inventory is invalid")
     source_name = str(lock["source"]["archive"])
     _verify_source(root / source_name, lock)
+    dependency_sources=load_dependency_lock(repo_root)['dependencies']
+    if catalog.get('dependencySources') != [{'name':e['name'],'source':e['source']} for e in dependency_sources]:
+        raise ValueError('release dependency source identities do not match lock')
+    source_names={source_name}
     expected_entries = [_catalog_asset(root / source_name, "source")]
-    for name in sorted(payload - {source_name}):
+    for entry in dependency_sources:
+        name=entry['source']['archive'];source_names.add(name)
+        _verify_source(root/name,{'source':entry['source']})
+        expected_entries.append(_catalog_asset(root/name,'dependency-source'))
+    for name in sorted(payload - source_names):
         archive = root / name
         manifest = _verify_sdk_archive(archive, repo_root)
         profile, target_id = _verify_sdk_identity(
@@ -317,6 +335,10 @@ def _main() -> int:
     root.mkdir(parents=True, exist_ok=True)
     if arguments.download_source:
         download_locked_source(root, repo_root)
+        for entry in load_dependency_lock(repo_root)['dependencies']:
+            destination=root/entry['source']['archive']
+            if destination.exists() or destination.is_symlink():raise ValueError('dependency source destination already exists')
+            _download(entry['source'],destination)
     if arguments.assemble:
         assemble_release_candidate(root, arguments.tag, repo_root)
     else:

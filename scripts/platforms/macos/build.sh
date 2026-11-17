@@ -21,12 +21,13 @@ case "$profile" in lgpl|gpl) ;; *) echo "invalid profile: $profile" >&2; exit 2 
 [[ $(uname -s) == Darwin ]] || { echo "macOS is required" >&2; exit 2; }
 [[ $(uname -m) == arm64 ]] || { echo "Apple Silicon arm64 is required" >&2; exit 2; }
 
-for tool in python3 clang make cmake file otool vtool xcodebuild xcrun strip; do
+for tool in python3 clang make cmake pkg-config file otool vtool xcodebuild xcrun strip; do
   command -v "$tool" >/dev/null || { echo "required tool is missing: $tool" >&2; exit 1; }
 done
 python3 -c 'import sys; assert sys.version_info >= (3, 12), sys.version'
 
 export MACOSX_DEPLOYMENT_TARGET=12.0
+export SOURCE_DATE_EPOCH=1786492800
 repo_root=$(cd "$repo_root" && pwd -P)
 export PYTHONPATH="$repo_root"
 mkdir -p "$output_root"
@@ -43,6 +44,10 @@ done
 cd "$repo_root"
 python3 -m scripts.common.source --repo-root "$repo_root" --output "$output_root/source-proof"
 mkdir -p "$build_root" "$install_root" "$stage_root" "$package_root"
+python3 -m scripts.common.build_dependencies --repo-root "$repo_root" --output "$output_root/dependencies" --profile "$profile" --target macos-arm64
+export PKG_CONFIG_PATH=
+export PKG_CONFIG_LIBDIR="$output_root/dependencies/prefix/lib/pkgconfig"
+
 
 configure_args=()
 while IFS= read -r argument; do
@@ -75,13 +80,15 @@ mkdir -p \
   "$stage_root/lib/cmake/LarixFFmpegSDK" \
   "$stage_root/share/larix-ffmpeg-sdk"
 cp "$install_root/bin/ffprobe" "$stage_root/bin/ffprobe"
-for component in avutil avcodec avformat swresample swscale; do
+for component in avutil avcodec avformat swresample swscale avfilter; do
   version=$(python3 -c 'import json,pathlib,sys; value=json.loads(pathlib.Path(sys.argv[1]).read_text()); print(value["libraryVersions"][sys.argv[2]])' "$repo_root/config/ffmpeg.lock.json" "$component")
   cp -L "$install_root/lib/lib${component}.${version}.dylib" "$stage_root/lib/lib${component}.${version}.dylib"
   cp -R "$install_root/include/lib${component}" "$stage_root/include/"
 done
 cp "$repo_root/cmake/LarixFFmpegSDKConfig.cmake.in" \
   "$stage_root/lib/cmake/LarixFFmpegSDK/LarixFFmpegSDKConfig.cmake"
+
+cp "$output_root/dependencies/build.json" "$stage_root/share/larix-ffmpeg-sdk/dependencies-build.json"
 
 python3 -m scripts.common.stage_sdk \
   --source-root "$source_root" --repo-root "$repo_root" \

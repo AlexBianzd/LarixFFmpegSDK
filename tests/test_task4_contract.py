@@ -120,7 +120,8 @@ class ReleaseContractReviewTests(unittest.TestCase):
                 license_names = {
                     path.name for path in (root / "LICENSES").iterdir() if path.is_file()
                 }
-                self.assertEqual(required, license_names)
+                from scripts.common.dependencies import dependency_licenses
+                self.assertEqual(required | set(dependency_licenses(REPOSITORY_ROOT, profile)), license_names)
                 (root / "LICENSES" / "undeclared.txt").write_text(
                     "undeclared\n", encoding="utf-8"
                 )
@@ -175,10 +176,10 @@ class ReleaseContractReviewTests(unittest.TestCase):
             self.assertEqual(source_package["licenseDeclared"], "NOASSERTION")
             self.assertEqual(source_package["licenseConcluded"], "NOASSERTION")
         self.assertEqual(
-            sdk_packages[0]["licenseDeclared"], "MIT AND LGPL-2.1-or-later"
+            sdk_packages[0]["licenseDeclared"], "MIT AND LGPL-2.1-or-later AND WTFPL"
         )
         self.assertEqual(
-            sdk_packages[1]["licenseDeclared"], "MIT AND GPL-2.0-or-later"
+            sdk_packages[1]["licenseDeclared"], "MIT AND GPL-2.0-or-later AND WTFPL"
         )
 
     def test_manifest_binds_every_release_input_and_rejects_tampering(self) -> None:
@@ -191,10 +192,10 @@ class ReleaseContractReviewTests(unittest.TestCase):
             runtime_dependencies={path: ["KERNEL32.dll"] for path in manifest_runtime()},
             forbidden_paths=(str(self.sdk.parent),),
         )
-        self.assertEqual(manifest["packagingRevision"], 1)
+        self.assertEqual(manifest["packagingRevision"], 2)
         self.assertEqual(manifest["packageFormat"], "zip")
-        self.assertEqual(manifest["assetName"], "larix-ffmpeg-sdk-9.0.1-larix.1-lgpl-windows-x64-msvc.zip")
-        self.assertEqual(set(manifest["libraryVersions"]), {"avutil", "avcodec", "avformat", "swresample", "swscale"})
+        self.assertEqual(manifest["assetName"], "larix-ffmpeg-sdk-9.0.1-larix.2-lgpl-windows-x64-msvc.zip")
+        self.assertEqual(set(manifest["libraryVersions"]), {"avutil", "avcodec", "avformat", "swresample", "swscale", "avfilter"})
         self.assertEqual(manifest["toolchain"], {"compiler": "MSVC 19.44", "windowsSdk": "10.0.26100.0"})
         self.assertEqual(manifest["patches"], [])
         self.assertIn("--toolchain=msvc", manifest["configureArgs"])
@@ -205,8 +206,8 @@ class ReleaseContractReviewTests(unittest.TestCase):
         original = json.loads(manifest_path.read_text(encoding="utf-8"))
         mutations = {
             "source": {**original["source"], "sha256": "0" * 64},
-            "packagingRevision": 2,
-            "releaseTag": "ffmpeg-9.0.1-larix.2",
+            "packagingRevision": 3,
+            "releaseTag": "ffmpeg-9.0.1-larix.3",
             "licenseProfile": "gpl",
             "assetName": "wrong.zip",
             "packageFormat": "tar.xz",
@@ -250,11 +251,11 @@ class ReleaseContractReviewTests(unittest.TestCase):
             entry["licenseInfoInFiles"] == ["NOASSERTION"]
             for entry in sbom["files"]
         ))
-        self.assertEqual(len(sbom["packages"]), 2)
+        self.assertEqual(len(sbom["packages"]), 3)
         packages = {entry["SPDXID"]: entry for entry in sbom["packages"]}
         sdk_package = packages["SPDXRef-Package-LarixFFmpegSDK"]
         source_package = packages["SPDXRef-Package-FFmpeg"]
-        aggregate_license = "MIT AND " + manifest["effectiveLicense"]
+        aggregate_license = "MIT AND " + manifest["effectiveLicense"] + " AND WTFPL"
         self.assertEqual(sdk_package["name"], "Larix FFmpeg SDK")
         self.assertEqual(sdk_package["versionInfo"], manifest["releaseTag"])
         self.assertEqual(sdk_package["downloadLocation"], "NOASSERTION")
@@ -299,8 +300,8 @@ class ReleaseContractReviewTests(unittest.TestCase):
             if relation["spdxElementId"] == sdk_package["SPDXID"]
             and relation["relationshipType"] == "CONTAINS"
         }
-        self.assertEqual(contained_ids, file_ids)
-        self.assertEqual(len(relationships), len(file_ids) + 2)
+        self.assertEqual(contained_ids, file_ids | {"SPDXRef-Package-zimg"})
+        self.assertEqual(len(relationships), len(file_ids) + 4)
         original = json.loads(json.dumps(sbom))
         for field, mutation in (
             ("sdk-license", lambda value: value["packages"][0].__setitem__(
@@ -511,7 +512,8 @@ class FFprobeReviewTests(unittest.TestCase):
 
 def manifest_runtime() -> tuple[str, ...]:
     return (
-        "bin/avcodec-63.dll", "bin/avformat-63.dll", "bin/avutil-61.dll",
+        "bin/avcodec-63.dll",
+        "bin/avfilter-12.dll", "bin/avformat-63.dll", "bin/avutil-61.dll",
         "bin/ffprobe.exe", "bin/swresample-7.dll", "bin/swscale-10.dll",
     )
 

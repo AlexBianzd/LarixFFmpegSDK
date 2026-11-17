@@ -76,7 +76,7 @@ $nasm = Require-File 'NASM' @($env:LARIX_NASM, 'C:/Program Files/NASM/nasm.exe',
 $bash = Require-File 'MSYS2 Bash' @($env:LARIX_MSYS2_BASH, 'C:/msys64/usr/bin/bash.exe')
 $make = Require-File 'MSYS2 make' @($env:LARIX_MSYS2_MAKE, 'C:/msys64/usr/bin/make.exe')
 $cmp = Require-File 'MSYS2 cmp' @((Join-Path (Split-Path $bash) 'cmp.exe'))
-$cmake = Require-File 'CMake' @($env:LARIX_CMAKE, 'C:/Program Files/CMake/bin/cmake.exe', $cmakeCandidate)
+$cmake = Require-File 'CMake' @($env:LARIX_CMAKE, $cmakeCandidate, 'C:/Program Files/CMake/bin/cmake.exe')
 $python = Require-File 'Python 3.12+' @($env:LARIX_PYTHON, $pythonCandidate)
 $previousErrorActionPreference = $ErrorActionPreference
 $ErrorActionPreference = 'Continue'
@@ -119,6 +119,16 @@ foreach ($path in @($install, $build, $stage, $package)) {
     if (Test-Path -LiteralPath $path) { throw ('Output path already exists: ' + $path) }
     New-Item -ItemType Directory -Path $path | Out-Null
 }
+$env:SOURCE_DATE_EPOCH = '1786492800'
+$env:LARIX_CMAKE = $cmake
+$env:LARIX_NASM = $nasm
+$env:LARIX_MSYS2_BASH = $bash
+$env:LARIX_MSYS2_MAKE = $make
+$env:PATH = (Split-Path $nasm) + ';' + $env:PATH
+& $python -m scripts.common.build_dependencies --repo-root $repo --output (Join-Path $output 'dependencies') --profile $Profile --target windows-x64-msvc
+if ($LASTEXITCODE -ne 0) { throw 'CPU dependency build failed.' }
+$env:PKG_CONFIG_PATH = ''
+$env:PKG_CONFIG_LIBDIR = Msys-Path (Join-Path $output 'dependencies/prefix/lib/pkgconfig')
 $configureJson = & $python -c 'import json,pathlib,sys;from scripts.common.model import compose_configure_args;print(json.dumps(compose_configure_args(pathlib.Path(sys.argv[1]),sys.argv[2],sys.argv[3])))' $repo $Profile 'windows-x64-msvc'
 if ($LASTEXITCODE -ne 0) { throw 'Configure argument composition failed.' }
 [string[]]$configure = $configureJson | ConvertFrom-Json
@@ -193,13 +203,14 @@ foreach ($name in $runtime) {
     if (-not $pdb) { throw ('Required PDB was not produced: ' + $pdbName) }
     Copy-Item -LiteralPath $pdb.FullName -Destination (Join-Path $stage ('symbols/' + $pdbName))
 }
-foreach ($component in @('avutil', 'avcodec', 'avformat', 'swresample', 'swscale')) {
+foreach ($component in @('avutil', 'avcodec', 'avformat', 'swresample', 'swscale', 'avfilter')) {
     Copy-Item -LiteralPath (Join-Path $install ('include/lib' + $component)) -Destination (Join-Path $stage 'include') -Recurse
     Copy-Item -LiteralPath (Join-Path $install ('bin/' + $component + '.lib')) -Destination (Join-Path $stage 'lib')
 }
 Copy-Item -LiteralPath (Join-Path $repo 'cmake/LarixFFmpegSDKConfig.cmake.in') -Destination (Join-Path $stage 'lib/cmake/LarixFFmpegSDK/LarixFFmpegSDKConfig.cmake')
 & $python -m scripts.common.stage_sdk --source-root $source --repo-root $repo --stage-root $stage --profile $Profile
 if ($LASTEXITCODE -ne 0) { throw 'Legal and build provenance staging failed.' }
+Copy-Item -LiteralPath (Join-Path $output 'dependencies/build.json') -Destination (Join-Path $stage 'share/larix-ffmpeg-sdk/dependencies-build.json')
 $lock = Get-Content -LiteralPath (Join-Path $repo 'config/ffmpeg.lock.json') -Raw | ConvertFrom-Json
 $provenance = [ordered]@{ archive = $lock.source.archive; sha256 = $lock.source.sha256; size = $lock.source.size; url = $lock.source.url }
 $utf8 = New-Object System.Text.UTF8Encoding($false)

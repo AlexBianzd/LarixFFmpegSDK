@@ -466,6 +466,7 @@ class WindowsWrapperTests(unittest.TestCase):
             json.loads(completed.stdout),
             [
                 "bin/avcodec-63.dll",
+                "bin/avfilter-12.dll",
                 "bin/avformat-63.dll",
                 "bin/avutil-61.dll",
                 "bin/ffprobe.exe",
@@ -683,7 +684,7 @@ class DeterministicFixtureTests(unittest.TestCase):
         consumer = (
             REPOSITORY_ROOT / "tests" / "consumer" / "CMakeLists.txt"
         ).read_text(encoding="utf-8")
-        self.assertIn("set(_larix_ffmpeg_dll_versions 61 63 63 7 10)", config)
+        self.assertIn("set(_larix_ffmpeg_dll_versions 61 63 63 7 10 12)", config)
         self.assertIn("if(NOT MSVC OR NOT CMAKE_SIZEOF_VOID_P EQUAL 8)", config)
         self.assertIn(
             "if(NOT EXISTS \"${_implib}\" OR NOT EXISTS \"${_runtime}\")",

@@ -2,19 +2,48 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "additionalProperties": false,
   "properties": {
-    "assetName": {"type": "string"},
-    "components": {"items": {"type": "string"}, "type": "array"},
-    "configureArgs": {"items": {"type": "string"}, "type": "array"},
-    "effectiveLicense": {"enum": ["LGPL-2.1-or-later", "GPL-2.0-or-later"]},
+    "assetName": {
+      "type": "string"
+    },
+    "components": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "configureArgs": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "effectiveLicense": {
+      "enum": [
+        "LGPL-2.1-or-later",
+        "GPL-2.0-or-later"
+      ]
+    },
     "files": {
       "items": {
         "additionalProperties": false,
         "properties": {
-          "path": {"type": "string"},
-          "sha256": {"pattern": "^[0-9a-f]{64}$", "type": "string"},
-          "size": {"minimum": 0, "type": "integer"}
+          "path": {
+            "type": "string"
+          },
+          "sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "type": "string"
+          },
+          "size": {
+            "minimum": 0,
+            "type": "integer"
+          }
         },
-        "required": ["path", "sha256", "size"],
+        "required": [
+          "path",
+          "sha256",
+          "size"
+        ],
         "type": "object"
       },
       "type": "array"
@@ -22,91 +51,275 @@
     "libraryVersions": {
       "additionalProperties": false,
       "properties": {
-        "avcodec": {"type": "integer"},
-        "avformat": {"type": "integer"},
-        "avutil": {"type": "integer"},
-        "swresample": {"type": "integer"},
-        "swscale": {"type": "integer"}
+        "avcodec": {
+          "type": "integer"
+        },
+        "avformat": {
+          "type": "integer"
+        },
+        "avutil": {
+          "type": "integer"
+        },
+        "swresample": {
+          "type": "integer"
+        },
+        "swscale": {
+          "type": "integer"
+        },
+        "avfilter": {
+          "type": "integer"
+        }
       },
-      "required": ["avcodec", "avformat", "avutil", "swresample", "swscale"],
+      "required": [
+        "avcodec",
+        "avformat",
+        "avutil",
+        "swresample",
+        "swscale",
+        "avfilter"
+      ],
       "type": "object"
     },
-    "licenseProfile": {"enum": ["lgpl", "gpl"]},
-    "packageFormat": {"enum": ["zip", "tar.xz"]},
-    "packagingRevision": {"const": 1},
+    "licenseProfile": {
+      "enum": [
+        "lgpl",
+        "gpl"
+      ]
+    },
+    "packageFormat": {
+      "enum": [
+        "zip",
+        "tar.xz"
+      ]
+    },
+    "packagingRevision": {
+      "const": 2
+    },
     "patches": {
       "items": {
         "additionalProperties": false,
         "properties": {
-          "path": {"type": "string"},
-          "sha256": {"pattern": "^[0-9a-f]{64}$", "type": "string"}
+          "path": {
+            "type": "string"
+          },
+          "sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "type": "string"
+          }
         },
-        "required": ["path", "sha256"],
+        "required": [
+          "path",
+          "sha256"
+        ],
         "type": "object"
       },
       "type": "array"
     },
-    "releaseTag": {"const": "ffmpeg-9.0.1-larix.1"},
+    "releaseTag": {
+      "const": "ffmpeg-9.0.1-larix.2"
+    },
     "runtimeDependencies": {
       "additionalProperties": false,
       "properties": {
-        "bin/avcodec-63.dll": {"items": {"type": "string"}, "type": "array"},
-        "bin/avformat-63.dll": {"items": {"type": "string"}, "type": "array"},
-        "bin/avutil-61.dll": {"items": {"type": "string"}, "type": "array"},
-        "bin/ffprobe.exe": {"items": {"type": "string"}, "type": "array"},
-        "bin/swresample-7.dll": {"items": {"type": "string"}, "type": "array"},
-        "bin/swscale-10.dll": {"items": {"type": "string"}, "type": "array"},
-        "bin/ffprobe": {"items": {"type": "string"}, "type": "array"},
-        "lib/libavcodec.63.dylib": {"items": {"type": "string"}, "type": "array"},
-        "lib/libavformat.63.dylib": {"items": {"type": "string"}, "type": "array"},
-        "lib/libavutil.61.dylib": {"items": {"type": "string"}, "type": "array"},
-        "lib/libswresample.7.dylib": {"items": {"type": "string"}, "type": "array"},
-        "lib/libswscale.10.dylib": {"items": {"type": "string"}, "type": "array"}
+        "bin/avcodec-63.dll": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "bin/avformat-63.dll": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "bin/avutil-61.dll": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "bin/ffprobe.exe": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "bin/swresample-7.dll": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "bin/swscale-10.dll": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "bin/ffprobe": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "lib/libavcodec.63.dylib": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "lib/libavformat.63.dylib": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "lib/libavutil.61.dylib": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "lib/libswresample.7.dylib": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "lib/libswscale.10.dylib": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "bin/avfilter-12.dll": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "lib/libavfilter.12.dylib": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
       },
       "type": "object"
     },
-    "runtimeFiles": {"items": {"type": "string"}, "type": "array"},
-    "schemaVersion": {"const": 1},
+    "runtimeFiles": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "schemaVersion": {
+      "const": 2
+    },
     "source": {
       "additionalProperties": false,
       "properties": {
-        "archive": {"type": "string"},
-        "sha256": {"pattern": "^[0-9a-f]{64}$", "type": "string"},
-        "size": {"minimum": 1, "type": "integer"},
-        "url": {"pattern": "^https://", "type": "string"}
+        "archive": {
+          "type": "string"
+        },
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "size": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "url": {
+          "pattern": "^https://",
+          "type": "string"
+        }
       },
-      "required": ["archive", "sha256", "size", "url"],
+      "required": [
+        "archive",
+        "sha256",
+        "size",
+        "url"
+      ],
       "type": "object"
     },
-    "symbols": {"items": {"type": "string"}, "type": "array"},
+    "symbols": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
     "target": {
       "additionalProperties": false,
       "properties": {
-        "abi": {"type": "string"},
-        "architecture": {"type": "string"},
-        "driver": {"type": "string"},
-        "id": {"type": "string"},
-        "linkage": {"type": "string"},
-        "minimumOsVersion": {"type": "string"},
-        "packageFormat": {"type": "string"},
-        "platform": {"type": "string"},
-        "toolchain": {"type": "string"}
+        "abi": {
+          "type": "string"
+        },
+        "architecture": {
+          "type": "string"
+        },
+        "driver": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "linkage": {
+          "type": "string"
+        },
+        "minimumOsVersion": {
+          "type": "string"
+        },
+        "packageFormat": {
+          "type": "string"
+        },
+        "platform": {
+          "type": "string"
+        },
+        "toolchain": {
+          "type": "string"
+        }
       },
-      "required": ["abi", "architecture", "driver", "id", "linkage", "packageFormat", "platform", "toolchain"],
+      "required": [
+        "abi",
+        "architecture",
+        "driver",
+        "id",
+        "linkage",
+        "packageFormat",
+        "platform",
+        "toolchain"
+      ],
       "type": "object"
     },
     "toolchain": {
       "additionalProperties": false,
       "properties": {
-        "compiler": {"type": "string"},
-        "macosSdk": {"type": "string"},
-        "xcode": {"type": "string"},
-        "windowsSdk": {"type": "string"}
+        "compiler": {
+          "type": "string"
+        },
+        "macosSdk": {
+          "type": "string"
+        },
+        "xcode": {
+          "type": "string"
+        },
+        "windowsSdk": {
+          "type": "string"
+        }
       },
-      "required": ["compiler"],
+      "required": [
+        "compiler"
+      ],
       "type": "object"
     },
-    "upstreamVersion": {"const": "9.0.1"}
+    "upstreamVersion": {
+      "const": "9.0.1"
+    },
+    "externalDependencies": {
+      "type": "array"
+    }
   },
   "required": [
     "assetName",
@@ -127,7 +340,8 @@
     "symbols",
     "target",
     "toolchain",
-    "upstreamVersion"
+    "upstreamVersion",
+    "externalDependencies"
   ],
   "type": "object"
 }

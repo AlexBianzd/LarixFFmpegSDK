@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 import shutil
+from scripts.common.dependencies import stage_dependency_provenance
 
 
 def _copy(source: Path, destination: Path) -> None:
@@ -24,6 +25,7 @@ def stage_legal_provenance(
     """Copy the exact profile license and repository-controlled build inputs."""
     if profile not in {"lgpl", "gpl"}:
         raise ValueError("unknown FFmpeg profile")
+    stage_dependency_provenance(repo_root, stage_root, profile)
     licenses = stage_root / "LICENSES"
     _copy(source_root / "LICENSE.md", licenses / "FFmpeg-LICENSE.md")
     primary = "COPYING.LGPLv2.1" if profile == "lgpl" else "COPYING.GPLv2"
