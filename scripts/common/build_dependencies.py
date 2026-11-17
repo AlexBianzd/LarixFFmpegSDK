@@ -10,6 +10,20 @@ def cmake_arguments(arguments: list) -> list[str]:
     """CMake -D values enter generated CMake syntax, so use forward slashes."""
     return [str(value).replace('\\','/') for value in arguments]
 
+def normalize_build_evidence(commands: list[dict], repo: Path, output: Path) -> list[dict]:
+    aliases=sorted([(str(repo).replace('\\','/'),'${REPO}'),(str(output).replace('\\','/'),'${DEPENDENCIES}')],key=lambda item:-len(item[0]))
+    def normalize(value):
+        if isinstance(value,str):
+            value=value.replace('\\','/')
+            for path,alias in aliases:value=value.replace(path,alias)
+            return value
+        if isinstance(value,list):return [normalize(v) for v in value]
+        if isinstance(value,dict):return {k:normalize(v) for k,v in value.items()}
+        return value
+    result=normalize(commands)
+    for command in result:command['argv'][0]=command['argv'][0].rsplit('/',1)[-1]
+    return result
+
 def build_dependencies(repo: Path, output: Path, profile: str, target: str) -> Path:
     windows=target=='windows-x64-msvc'
     if target not in {'windows-x64-msvc','macos-arm64'}:raise ValueError('unsupported dependency target')
@@ -82,16 +96,8 @@ def build_dependencies(repo: Path, output: Path, profile: str, target: str) -> P
         pc('x265','4.1','x265','' if windows else '-lc++ -lpthread -lm')
     for name,root in sources.items():
         if _tree_manifest(root)!=before[name]:raise ValueError(f'dependency build changed source tree: {name}')
-    def sanitize(value):
-        if isinstance(value,str):
-            # Longest aliases first to avoid partial replacements.
-            for path,alias in sorted([(str(repo),'${REPO}'),(str(output),'${DEPENDENCIES}')],key=lambda a:-len(a[0])):value=value.replace(path,alias)
-            return value.replace('\\','/')
-        if isinstance(value,list):return [sanitize(v) for v in value]
-        if isinstance(value,dict):return {k:sanitize(v) for k,v in value.items()}
-        return value
     files={p.relative_to(prefix).as_posix():hashlib.sha256(p.read_bytes()).hexdigest() for p in sorted(prefix.rglob('*')) if p.is_file() and p.suffix in {'.a','.lib','.h'}}
-    record={'schemaVersion':1,'target':target,'profile':profile,'dependencies':selected_dependencies(repo,profile),'commands':sanitize(commands),'files':files,'zimgImplementation':'upstream scalar C++','x265Assembly':False,'sourceDateEpoch':1786492800}
+    record={'schemaVersion':1,'target':target,'profile':profile,'dependencies':selected_dependencies(repo,profile),'commands':normalize_build_evidence(commands,repo,output),'files':files,'zimgImplementation':'upstream scalar C++','x265Assembly':False,'sourceDateEpoch':1786492800}
     (output/'build.json').write_text(json.dumps(record,sort_keys=True,indent=2)+'\n',encoding='utf-8')
     return prefix
 

@@ -7,3 +7,9 @@ class CMakePathTests(unittest.TestCase):
   self.assertTrue(callable(normalize),'CMake argument normalization is missing')
   got=normalize([PureWindowsPath('C:/Program Files/CMake/bin/cmake.exe'),'-DZIMG_SOURCE=D:\\a\\sources\\zimg','-DCMAKE_CXX_FLAGS=/MT /pathmap:D:\\a\\sources=zimg-source'])
   self.assertEqual(got,['C:/Program Files/CMake/bin/cmake.exe','-DZIMG_SOURCE=D:/a/sources/zimg','-DCMAKE_CXX_FLAGS=/MT /pathmap:D:/a/sources=zimg-source'])
+
+ def test_normalized_cmake_paths_are_removed_from_release_evidence(self):
+  normalize=getattr(build,'normalize_build_evidence',None)
+  self.assertTrue(callable(normalize),'build evidence normalization is missing')
+  got=normalize([{'argv':['C:/Tools/cmake.exe','-DZIMG_SOURCE=D:/a/sdk/build/deps/sources/zimg'],'cwd':'D:\\a\\sdk\\build\\deps'}],PureWindowsPath('D:/a/sdk'),PureWindowsPath('D:/a/sdk/build/deps'))
+  self.assertEqual(got,[{'argv':['cmake.exe','-DZIMG_SOURCE=${DEPENDENCIES}/sources/zimg'],'cwd':'${DEPENDENCIES}'}])
