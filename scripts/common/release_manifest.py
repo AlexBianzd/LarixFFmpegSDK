@@ -45,7 +45,7 @@ WINDOWS_PLATFORM_CONFIGURE_ARGS = (
     "--arch=x86_64",
     "--target-os=win64",
     "--cc=larix-msvc-cl.cmd",
-    "--extra-cflags=/experimental:deterministic /Brepro /pathmap:./src=larix-source /pathmap:.=larix-build /pathmap:../install=larix-install /pathmap:..=larix-output",
+    "--extra-cflags=/experimental:deterministic /Brepro /MT /pathmap:./src=larix-source /pathmap:.=larix-build /pathmap:../install=larix-install /pathmap:..=larix-output",
     "--extra-ldflags=/Brepro /PDBALTPATH:%_PDB%",
     "--prefix=../install",
 )

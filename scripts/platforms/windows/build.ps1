@@ -122,6 +122,8 @@ foreach ($path in @($install, $build, $stage, $package)) {
 $env:SOURCE_DATE_EPOCH = '1786492800'
 $env:LARIX_CMAKE = $cmake
 $env:LARIX_NASM = $nasm
+$env:LARIX_MSYS2_BASH = $bash
+$env:LARIX_MSYS2_MAKE = $make
 $env:PATH = (Split-Path $nasm) + ';' + $env:PATH
 & $python -m scripts.common.build_dependencies --repo-root $repo --output (Join-Path $output 'dependencies') --profile $Profile --target windows-x64-msvc
 if ($LASTEXITCODE -ne 0) { throw 'CPU dependency build failed.' }

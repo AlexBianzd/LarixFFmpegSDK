@@ -248,7 +248,18 @@ def verify_sdk_archive(archive: Path, repo_root: Path) -> dict[str, object]:
             raise RuntimeError("CMake consumer executable was not produced")
         subprocess.run([str(executable), str(video)], check=True, env=environment)
         prepare_hdr_fixture(repo_root, fixtures)
-        subprocess.run([str(consumer_executable(build,'larix_ffmpeg_encoding')),str(manifest['licenseProfile']),'.'],check=True,env=environment,cwd=fixtures)
+        extension='.dll' if target_id=='windows-x64-msvc' else '.dylib'
+        candidates=(build/'Release'/('libx265_main12'+extension),build/('libx265_main12'+extension))
+        sentinel=next((p for p in candidates if p.is_file()),None)
+        if sentinel is None:raise RuntimeError('foreign encoder isolation fixture was not built')
+        foreign=fixtures/'foreign-libraries';foreign.mkdir()
+        for name in ['libx265_main12','libx265']:
+            shutil.copyfile(sentinel,foreign/(name+extension))
+        isolated_environment=dict(environment)
+        search_key='PATH' if target_id=='windows-x64-msvc' else 'DYLD_LIBRARY_PATH'
+        isolated_environment[search_key]=str(foreign)+os.pathsep+isolated_environment.get(search_key,'')
+        subprocess.run([str(consumer_executable(build,'larix_ffmpeg_encoding')),str(manifest['licenseProfile']),'.'],check=True,env=isolated_environment,cwd=fixtures)
+        if (fixtures/'larix-unexpected-x265-load.marker').exists():raise ValueError('SDK loaded an unpinned external x265 library')
         subprocess.run([str(consumer_executable(build,'larix_ffmpeg_hdr'))],check=True,env=environment,cwd=fixtures)
         return manifest
 

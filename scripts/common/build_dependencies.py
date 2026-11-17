@@ -6,6 +6,10 @@ import shutil, subprocess
 from scripts.common.dependencies import prepare_dependencies, selected_dependencies
 from scripts.common.source import _tree_manifest
 
+def cmake_arguments(arguments: list) -> list[str]:
+    """CMake -D values enter generated CMake syntax, so use forward slashes."""
+    return [str(value).replace('\\','/') for value in arguments]
+
 def build_dependencies(repo: Path, output: Path, profile: str, target: str) -> Path:
     windows=target=='windows-x64-msvc'
     if target not in {'windows-x64-msvc','macos-arm64'}:raise ValueError('unsupported dependency target')
@@ -29,11 +33,11 @@ def build_dependencies(repo: Path, output: Path, profile: str, target: str) -> P
         args=[cmake,'-S',source,'-B',build,'-DCMAKE_BUILD_TYPE=Release','-DCMAKE_POSITION_INDEPENDENT_CODE=ON']
         if windows:
             flags=f'/Brepro /pathmap:{source}=dependency-source /pathmap:{build}=dependency-build'
-            args+=['-G','NMake Makefiles','-DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreadedDLL', f'-DCMAKE_C_FLAGS={flags}',f'-DCMAKE_CXX_FLAGS={flags}']
+            args+=['-G','NMake Makefiles','-DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded', f'-DCMAKE_C_FLAGS={flags}',f'-DCMAKE_CXX_FLAGS={flags}']
         else:
             maps=f'-ffile-prefix-map={source}=dependency-source -fdebug-prefix-map={build}=dependency-build'
             args+=['-DCMAKE_OSX_ARCHITECTURES=arm64','-DCMAKE_OSX_DEPLOYMENT_TARGET=12.0',f'-DCMAKE_C_FLAGS={maps}',f'-DCMAKE_CXX_FLAGS={maps}']
-        run(args+extra)
+        run(cmake_arguments(args+extra))
         run([cmake,'--build',build,'--config','Release','--parallel',jobs])
     zbuild=output/'build/zimg'
     configure(repo/'cmake/zimg',zbuild,[f'-DZIMG_SOURCE={sources["zimg"]}',f'-DCMAKE_INSTALL_PREFIX={prefix}'])
@@ -53,7 +57,7 @@ def build_dependencies(repo: Path, output: Path, profile: str, target: str) -> P
             def msys(path):
                 v=Path(path).resolve().as_posix();return '/'+v[0].lower()+v[2:]
             configure_cmd=[bash,msys(sources['x264']/'configure'),'--host=x86_64-pc-mingw32']
-            xflags=f'-Brepro -pathmap:{sources["x264"]}=x264-source -pathmap:{xb}=x264-build'
+            xflags=f'-MT -Brepro -pathmap:{sources["x264"]}=x264-source -pathmap:{xb}=x264-build'
         else:
             make=shutil.which('make');configure_cmd=['bash',sources['x264']/'configure','--host=aarch64-apple-darwin']
             xflags=f'-mmacosx-version-min=12.0 -ffile-prefix-map={sources["x264"]}=x264-source -fdebug-prefix-map={xb}=x264-build'
@@ -62,15 +66,16 @@ def build_dependencies(repo: Path, output: Path, profile: str, target: str) -> P
         shutil.copyfile(xb/('libx264.lib' if windows else 'libx264.a'),prefix/'lib'/('libx264.lib' if windows else 'libx264.a'))
         shutil.copyfile(sources['x264']/'x264.h',prefix/'include/x264.h');shutil.copyfile(xb/'x264_config.h',prefix/'include/x264_config.h')
         libs={}
-        for depth in [10,8]:
+        for depth in [12,10,8]:
             build=output/f'build/x265-{depth}'
-            opts=['-DENABLE_SHARED=OFF','-DENABLE_CLI=OFF','-DENABLE_LIBNUMA=OFF','-DNATIVE_BUILD=OFF', '-DENABLE_PIC=ON', '-DENABLE_ASSEMBLY=OFF', '-DENABLE_NEON=OFF', '-DENABLE_SVE=OFF', '-DENABLE_SVE2=OFF', '-DENABLE_SVT_HEVC=OFF', f'-DHIGH_BIT_DEPTH={"ON" if depth==10 else "OFF"}',f'-DEXPORT_C_API={"OFF" if depth==10 else "ON"}',f'-DENABLE_HDR10_PLUS={"ON" if depth==10 else "OFF"}']
-            if depth==8:opts += ['-DLINKED_10BIT=ON',f'-DEXTRA_LIB={libs[10]}']
+            opts=['-DENABLE_SHARED=OFF','-DENABLE_CLI=OFF','-DSTATIC_LINK_CRT=ON','-DENABLE_LIBNUMA=OFF','-DNATIVE_BUILD=OFF', '-DENABLE_PIC=ON', '-DENABLE_ASSEMBLY=OFF', '-DENABLE_NEON=OFF', '-DENABLE_SVE=OFF', '-DENABLE_SVE2=OFF', '-DENABLE_SVT_HEVC=OFF', f'-DHIGH_BIT_DEPTH={"ON" if depth!=8 else "OFF"}',f'-DEXPORT_C_API={"ON" if depth==8 else "OFF"}',f'-DENABLE_HDR10_PLUS={"ON" if depth==10 else "OFF"}']
+            if depth==12:opts += ['-DMAIN12=ON']
+            if depth==8:opts += ['-DLINKED_10BIT=ON','-DLINKED_12BIT=ON',f'-DEXTRA_LIB={libs[10]};{libs[12]}']
             configure(sources['x265']/'source',build,opts)
             libs[depth]=build/('x265-static.lib' if windows else 'libx265.a')
         combined=prefix/'lib'/('x265.lib' if windows else 'libx265.a')
-        if windows:run(['lib.exe','/nologo',f'/OUT:{combined}',libs[8],libs[10]])
-        else:run(['/usr/bin/libtool','-static','-o',combined,libs[8],libs[10]])
+        if windows:run(['lib.exe','/nologo',f'/OUT:{combined}',libs[8],libs[10],libs[12]])
+        else:run(['/usr/bin/libtool','-static','-o',combined,libs[8],libs[10],libs[12]])
         shutil.copyfile(sources['x265']/'source/x265.h',prefix/'include/x265.h')
         shutil.copyfile(output/'build/x265-8/x265_config.h',prefix/'include/x265_config.h')
         pc('x264','0.164','libx264' if windows else 'x264','' if windows else '-lpthread -lm')

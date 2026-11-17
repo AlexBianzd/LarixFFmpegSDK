@@ -29,8 +29,8 @@ and license profiles must all match exactly.
 
 Revision 2 retains unmodified FFmpeg 9.0.1 and adds `avfilter` plus hash-locked
 zimg to both license profiles. The GPL profile also statically includes locked
-x264 (8/10-bit) and x265 4.1 (8/10-bit multilib, dynamicHDR10 enabled for 10-bit).
-No encoder static archives are shipped in the SDK. Exact sources and their
+x264 (8/10-bit) and x265 4.1 (8/10/12-bit multilib, dynamicHDR10 enabled for 10-bit).
+The 12-bit x265 implementation is statically included to keep capability probes from loading a system encoder. No encoder static archives are shipped in the SDK. Exact sources and their
 licenses are recorded in `config/dependencies.lock.json` and the package SBOM.
 
 Use the native FFmpeg APIs: `libx264` covers 8-bit Baseline/Main/High and 10-bit
@@ -57,7 +57,7 @@ highlight detail absent from the SDR input.
 ```
 
 Use `-Profile gpl` for the explicit GPL profile. The driver requires Visual
-Studio 2022 C++ tools, NASM, MSYS2 Bash, GNU make and diffutils, CMake 3.25 or newer, pkgconf (MSYS2), and
+Studio 2022 C++ tools, NASM, MSYS2 Bash, GNU make and diffutils, CMake 3.25 through 3.x, pkgconf (MSYS2), and
 Python 3.12 or newer. It never downloads or installs tools. Optional
 `LARIX_NASM`, `LARIX_MSYS2_BASH`, `LARIX_MSYS2_MAKE`, `LARIX_CMAKE`, and
 `LARIX_PYTHON` variables may point to existing installations.
@@ -85,7 +85,7 @@ an exact minimum deployment target of macOS 12.0.
 ```
 
 The driver requires Xcode Command Line Tools with Apple Clang, `make`, `pkg-config`, CMake
-3.25 or newer, and Python 3.12 or newer. It does not install tools. Each
+3.25 through 3.x, and Python 3.12 or newer. It does not install tools. Each
 deterministic `.tar.xz` contains the six versioned shared dylibs, `ffprobe`,
 public headers, relocatable `LarixFFmpegSDK::*` CMake targets, exact legal and
 source provenance, canonical manifest/SBOM/checksums, and no static archives.

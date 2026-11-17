@@ -466,6 +466,7 @@ class WindowsWrapperTests(unittest.TestCase):
             json.loads(completed.stdout),
             [
                 "bin/avcodec-63.dll",
+                "bin/avfilter-12.dll",
                 "bin/avformat-63.dll",
                 "bin/avutil-61.dll",
                 "bin/ffprobe.exe",

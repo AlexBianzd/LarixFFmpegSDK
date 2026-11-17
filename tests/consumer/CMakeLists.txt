@@ -27,3 +27,6 @@ target_link_libraries(larix_ffmpeg_hdr PRIVATE LarixFFmpegSDK::avfilter LarixFFm
 if(UNIX)
   target_link_libraries(larix_ffmpeg_hdr PRIVATE m)
 endif()
+# Negative fixture: the SDK must never dynamically discover this system encoder.
+add_library(larix_foreign_x265 SHARED ../fixtures/foreign_x265.c)
+set_target_properties(larix_foreign_x265 PROPERTIES PREFIX "lib" OUTPUT_NAME "x265_main12")

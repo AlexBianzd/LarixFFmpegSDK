@@ -87,7 +87,7 @@ def main() -> None:
 if __name__=='__main__':main()
 
 def dependency_records(repo: Path, profile: str) -> list[dict]:
-    return [{**entry,'linkage':'static','features':({'bitDepths':[8,10],'chroma':'420'} if entry['name']=='x264' else {'bitDepths':[8,10],'hdr10plus':True} if entry['name']=='x265' else {'cpuOnly':True,'implementation':'scalar C++'})} for entry in selected_dependencies(repo,profile)]
+    return [{**entry,'linkage':'static','features':({'bitDepths':[8,10],'chroma':'420'} if entry['name']=='x264' else {'bitDepths':[8,10,12],'hdr10plus':True} if entry['name']=='x265' else {'cpuOnly':True,'implementation':'scalar C++'})} for entry in selected_dependencies(repo,profile)]
 
 def dependency_licenses(repo: Path, profile: str) -> dict[str,tuple[Path,str]]:
     result={}

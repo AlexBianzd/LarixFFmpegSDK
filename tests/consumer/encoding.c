@@ -27,7 +27,7 @@ static void fill(AVFrame *f,int depth,int index) {
 static int check_frame(AVFrame *f, Check *c) {
   int index=(int)av_rescale_q(f->pts,c->tb,(AVRational){1,25});
   if(index<0||index>=N||(c->seen&(1u<<index))||f->width!=W||f->height!=H) return 0;
-  if(f->format!=(c->depth==8?AV_PIX_FMT_YUV420P:AV_PIX_FMT_YUV420P10LE)) return 0;
+  if(f->format!=(c->depth==8?AV_PIX_FMT_YUV420P:c->depth==10?AV_PIX_FMT_YUV420P10LE:AV_PIX_FMT_YUV420P12LE)) return 0;
   if(f->color_primaries!=(c->mode?AVCOL_PRI_BT2020:AVCOL_PRI_BT709)||
      f->colorspace!=(c->mode?AVCOL_SPC_BT2020_NCL:AVCOL_SPC_BT709)||
      f->color_trc!=((c->mode==2||c->mode==5)?AVCOL_TRC_ARIB_STD_B67:c->mode?AVCOL_TRC_SMPTE2084:AVCOL_TRC_BT709)||f->color_range!=AVCOL_RANGE_MPEG) return 0;
@@ -119,9 +119,9 @@ static int run_case(const char *name,int depth,const char *profile,int mode,cons
   int ok=0,count=0;AVCodecContext *enc=NULL,*dec=NULL;AVFrame *input=av_frame_alloc(),*decoded=av_frame_alloc();AVPacket *packet=av_packet_alloc(),*packets[64]={0};AVDictionary *options=NULL;const AVFrameSideData *dovi=NULL;
   AVFrame *recovered[N]={0};Check check={0};check.frames=supplied?NULL:recovered;check.depth=depth;check.mode=mode;check.tb=(AVRational){1,25};
   const AVCodec *encoder=avcodec_find_encoder_by_name(name);REQUIRE(encoder&&input&&decoded&&packet);
-  enc=avcodec_alloc_context3(encoder);REQUIRE(enc);enc->flags|=AV_CODEC_FLAG_GLOBAL_HEADER;enc->width=W;enc->height=H;enc->pix_fmt=depth==8?AV_PIX_FMT_YUV420P:AV_PIX_FMT_YUV420P10LE;enc->time_base=(AVRational){1,25};enc->framerate=(AVRational){25,1};enc->gop_size=8;enc->max_b_frames=!strcmp(profile,"baseline")?0:2;enc->thread_count=1;
+  enc=avcodec_alloc_context3(encoder);REQUIRE(enc);enc->flags|=AV_CODEC_FLAG_GLOBAL_HEADER;enc->width=W;enc->height=H;enc->pix_fmt=depth==8?AV_PIX_FMT_YUV420P:depth==10?AV_PIX_FMT_YUV420P10LE:AV_PIX_FMT_YUV420P12LE;enc->time_base=(AVRational){1,25};enc->framerate=(AVRational){25,1};enc->gop_size=8;enc->max_b_frames=!strcmp(profile,"baseline")?0:2;enc->thread_count=1;
   enc->color_primaries=mode?AVCOL_PRI_BT2020:AVCOL_PRI_BT709;enc->colorspace=mode?AVCOL_SPC_BT2020_NCL:AVCOL_SPC_BT709;enc->color_trc=(mode==2||mode==5)?AVCOL_TRC_ARIB_STD_B67:mode?AVCOL_TRC_SMPTE2084:AVCOL_TRC_BT709;enc->color_range=AVCOL_RANGE_MPEG;enc->chroma_sample_location=AVCHROMA_LOC_LEFT;
-  av_dict_set(&options,"preset","medium",0);av_dict_set(&options,"profile",profile,0);av_dict_set(&options,"crf","18",0);
+  av_dict_set(&options,"preset","medium",0);av_dict_set(&options,"profile",profile,0);if(depth==8&&!strcmp(profile,"main"))enc->bit_rate=300000;else av_dict_set(&options,"crf","18",0);
   if(supplied){
     for(int i=0;i<supplied[0]->nb_side_data;i++) {
       AVFrameSideData *sd=supplied[0]->side_data[i];
@@ -146,7 +146,7 @@ static int run_case(const char *name,int depth,const char *profile,int mode,cons
   }
   REQUIRE(avcodec_send_packet(dec,NULL)>=0&&receive(dec,decoded,&check)&&complete(&check));
   REQUIRE(count==N);
-  int expected_profile=!strcmp(name,"libx265")?(depth==10?AV_PROFILE_HEVC_MAIN_10:AV_PROFILE_HEVC_MAIN):!strcmp(profile,"baseline")?AV_PROFILE_H264_BASELINE:!strcmp(profile,"main")?AV_PROFILE_H264_MAIN:depth==10?AV_PROFILE_H264_HIGH_10:AV_PROFILE_H264_HIGH;
+  int expected_profile=!strcmp(name,"libx265")?(depth==12?AV_PROFILE_HEVC_REXT:depth==10?AV_PROFILE_HEVC_MAIN_10:AV_PROFILE_HEVC_MAIN):!strcmp(profile,"baseline")?AV_PROFILE_H264_BASELINE:!strcmp(profile,"main")?AV_PROFILE_H264_MAIN:depth==10?AV_PROFILE_H264_HIGH_10:AV_PROFILE_H264_HIGH;
   REQUIRE((dec->profile & ~AV_PROFILE_H264_CONSTRAINED)==expected_profile);
   if(strcmp(profile,"baseline"))REQUIRE(check.bframes>0);
   for(int ext=0;ext<2;ext++) {
@@ -166,6 +166,7 @@ int main(int argc,char **argv) {
   const char *profiles[]={"baseline","main","high","high10"};
   for(int i=0;i<4;i++)if(!run_case("libx264",i==3?10:8,profiles[i],0,argv[2],NULL))return 10+i;
   if(!run_case("libx265",8,"main",0,argv[2],NULL)||!run_case("libx265",10,"main10",0,argv[2],NULL))return 20;
+  if(!run_case("libx265",12,"main12",0,argv[2],NULL))return 21;
   for(int mode=1;mode<=5;mode++)if(!run_case("libx265",10,"main10",mode,argv[2],NULL))return 30+mode;
   puts("CPU H264/HEVC 8/10-bit, HDR10/HLG/HDR10+ and limited DV8 acceptance passed");return 0;
 }
