@@ -10,13 +10,13 @@ GPL terms.
 
 ## Current release
 
-[`ffmpeg-9.0.1-larix.1`](https://github.com/AlexBianzd/LarixFFmpegSDK/releases/tag/ffmpeg-9.0.1-larix.1)
-is the first immutable public release. It contains LGPL and GPL shared-library
-SDKs for Windows x64 MSVC and macOS arm64, plus the hash-locked FFmpeg source,
-release catalog, and top-level checksums. See the
-[durable release report](docs/reports/2026-08-13-ffmpeg-9.0.1-larix.1-release.md)
-for exact assets, hashes, toolchains, verification evidence, and unsupported
-platform boundaries.
+[`ffmpeg-9.0.1-larix.2`](https://github.com/AlexBianzd/LarixFFmpegSDK/releases/tag/ffmpeg-9.0.1-larix.2)
+provides LGPL and GPL shared-library SDKs for Windows x64 MSVC and macOS arm64,
+with CPU encoding and HDR processing. The Release includes four hash-locked
+upstream source archives, a release catalog, and top-level checksums. See the
+[version release report](docs/reports/2026-11-18-ffmpeg-9.0.1-larix.2-release.md)
+for the included libraries, capability boundaries, exact assets, hashes,
+toolchains, and verification evidence.
 
 ## Source lock
 
@@ -34,7 +34,7 @@ The 12-bit x265 implementation is statically included to keep capability probes 
 licenses are recorded in `config/dependencies.lock.json` and the package SBOM.
 
 Use the native FFmpeg APIs: `libx264` covers 8-bit Baseline/Main/High and 10-bit
-High 10; `libx265` covers HEVC Main/Main 10. CPU `zscale`, `tonemap` and
+High 10; `libx265` covers HEVC Main/Main 10/Main 12. CPU `zscale`, `tonemap` and
 `exposure` filters support the documented HDR10/HLG and SDR conversion paths.
 All builds exclude GPU processing, hardware codecs and display/player modules.
 The C consumers in `tests/consumer` exercise encoding, delayed-frame flush,
@@ -62,8 +62,8 @@ Python 3.12 or newer. It never downloads or installs tools. Optional
 `LARIX_NASM`, `LARIX_MSYS2_BASH`, `LARIX_MSYS2_MAKE`, `LARIX_CMAKE`, and
 `LARIX_PYTHON` variables may point to existing installations.
 
-Each ZIP contains shared `avutil`, `avcodec`, `avformat`, `swresample`, and
-`swscale`, and `avfilter` libraries, `ffprobe.exe`, public headers, MSVC import libraries,
+Each ZIP contains shared `avutil`, `avcodec`, `avformat`, `avfilter`,
+`swresample`, and `swscale` libraries, `ffprobe.exe`, public headers, MSVC import libraries,
 relocatable `LarixFFmpegSDK::*` CMake targets, license/source provenance,
 profile-correct FFmpeg license texts, PDB symbols, canonical metadata, an
 SPDX 2.3 SBOM, and `SHA256SUMS`. Packaging and
@@ -96,7 +96,7 @@ system dependencies before building and running the relocated C consumer.
 ## GitHub verification
 
 Pull requests run only the lightweight Python contract suite on the standard
-public `ubuntu-24.04` runner. Maintainers can manually dispatch the `Verify
+public `windows-2022` runner. Maintainers can manually dispatch the `Verify
 SDK` workflow with `full=true` to build all four LGPL/GPL Windows x64 and
 macOS arm64 packages on standard `windows-2022` and `macos-15` runners.
 
