@@ -6,6 +6,10 @@ import shutil, subprocess
 from scripts.common.dependencies import prepare_dependencies, selected_dependencies
 from scripts.common.source import _tree_manifest
 
+def build_path(path: Path) -> Path:
+    """Make paths absolute without undoing the Windows stable SUBST root."""
+    return Path(os.path.abspath(path))
+
 def cmake_arguments(arguments: list) -> list[str]:
     """CMake -D values enter generated CMake syntax, so use forward slashes."""
     return [str(value).replace('\\','/') for value in arguments]
@@ -75,7 +79,7 @@ def build_dependencies(repo: Path, output: Path, profile: str, target: str) -> P
             if not bash or not make:raise RuntimeError('MSYS2 bash/make required')
             xenv['PATH']=environment.get('PATH','')+os.pathsep+str(Path(bash).parent)+os.pathsep+str(Path(make).parent)
             def msys(path):
-                v=Path(path).resolve().as_posix();return '/'+v[0].lower()+v[2:]
+                v=build_path(Path(path)).as_posix();return '/'+v[0].lower()+v[2:]
             configure_cmd=[bash,msys(sources['x264']/'configure'),'--host=x86_64-pc-mingw32']
             xflags=f'-MT -experimental:deterministic -Brepro -pathmap:{sources["x264"]}=x264-source -pathmap:{xb}=x264-build'
         else:
@@ -109,5 +113,5 @@ def build_dependencies(repo: Path, output: Path, profile: str, target: str) -> P
 
 def main():
     p=argparse.ArgumentParser();p.add_argument('--repo-root',type=Path,default=Path.cwd());p.add_argument('--output',type=Path,required=True);p.add_argument('--profile',choices=['lgpl','gpl'],required=True);p.add_argument('--target',choices=['windows-x64-msvc','macos-arm64'],required=True)
-    a=p.parse_args();print(build_dependencies(a.repo_root.resolve(),a.output.resolve(),a.profile,a.target))
+    a=p.parse_args();print(build_dependencies(a.repo_root.resolve(),build_path(a.output),a.profile,a.target))
 if __name__=='__main__':main()
