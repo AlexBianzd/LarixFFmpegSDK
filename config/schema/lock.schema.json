@@ -12,35 +12,61 @@
     "libraryVersions"
   ],
   "properties": {
-    "schemaVersion": { "const": 1 },
-    "upstreamVersion": { "const": "9.0.1" },
-    "packagingRevision": { "type": "integer", "const": 1, "minimum": 1 },
-    "releaseTag": { "const": "ffmpeg-9.0.1-larix.1" },
+    "schemaVersion": {
+      "const": 1
+    },
+    "upstreamVersion": {
+      "const": "9.0.1"
+    },
+    "packagingRevision": {
+      "type": "integer",
+      "const": 2,
+      "minimum": 1
+    },
+    "releaseTag": {
+      "const": "ffmpeg-9.0.1-larix.2"
+    },
     "source": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["url", "archive", "size", "sha256"],
+      "required": [
+        "url",
+        "archive",
+        "size",
+        "sha256"
+      ],
       "properties": {
         "url": {
           "type": "string",
           "pattern": "^https://"
         },
-        "archive": { "const": "ffmpeg-9.0.1.tar.xz" },
-        "size": { "type": "integer", "minimum": 1 },
+        "archive": {
+          "const": "ffmpeg-9.0.1.tar.xz"
+        },
+        "size": {
+          "type": "integer",
+          "minimum": 1
+        },
         "sha256": {
           "type": "string",
           "pattern": "^[0-9a-f]{64}$"
         }
       }
     },
-    "profiles": { "const": ["lgpl", "gpl"] },
+    "profiles": {
+      "const": [
+        "lgpl",
+        "gpl"
+      ]
+    },
     "libraryVersions": {
       "const": {
         "avutil": 61,
         "avcodec": 63,
         "avformat": 63,
         "swresample": 7,
-        "swscale": 10
+        "swscale": 10,
+        "avfilter": 12
       }
     }
   }

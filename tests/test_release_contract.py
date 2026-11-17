@@ -35,6 +35,14 @@ class ReleaseCandidateContractTests(unittest.TestCase):
             "sha256": hashlib.sha256(source).hexdigest(),
         }
         (self.root / "ffmpeg-9.0.1.tar.xz").write_bytes(source)
+        from scripts.common.dependencies import load_dependency_lock
+        self.dependency_lock=load_dependency_lock(REPOSITORY_ROOT)
+        # External archives are represented by small fixed bytes in unit fixtures.
+        for entry in self.dependency_lock['dependencies']:
+            data=(entry['source']['archive']+'\n').encode()
+            entry['source'].update(size=len(data),sha256=hashlib.sha256(data).hexdigest())
+        patcher=mock.patch('scripts.common.verify_release.load_dependency_lock',return_value=self.dependency_lock)
+        patcher.start();self.addCleanup(patcher.stop)
         for name in expected_release_asset_names(self.lock, REPOSITORY_ROOT):
             if name != "ffmpeg-9.0.1.tar.xz":
                 (self.root / name).write_bytes((name + "\n").encode("utf-8"))
@@ -68,10 +76,17 @@ class ReleaseCandidateContractTests(unittest.TestCase):
                 self.root, str(self.lock["releaseTag"]), REPOSITORY_ROOT
             )
 
+    def test_release_requires_all_dependency_source_archives(self) -> None:
+        names=expected_release_asset_names(self.lock, REPOSITORY_ROOT)
+        self.assertIn('x265-4.1.tar.gz',names)
+        self.assertIn('zimg-3.0.6.tar.gz',names)
+        self.assertIn('x264-31e19f92f00c7003fa115047ce50978bc98c3a0d.tar.bz2',names)
+        self.assertEqual(len(names),8)
+
     def test_exact_candidate_is_canonical_and_bound_to_all_four_identities(self) -> None:
         catalog = self._assemble_and_verify()
         self.assertEqual(catalog["releaseTag"], self.lock["releaseTag"])
-        self.assertEqual(len(catalog["assets"]), 5)
+        self.assertEqual(len(catalog["assets"]), 8)
         self.assertEqual(
             {path.name for path in self.root.iterdir()},
             expected_release_asset_names(self.lock, REPOSITORY_ROOT)
@@ -90,7 +105,7 @@ class ReleaseCandidateContractTests(unittest.TestCase):
             side_effect=self._manifest,
         ):
             with self.assertRaises(ValueError):
-                verify_release_directory(self.root, "ffmpeg-9.0.1-larix.2", REPOSITORY_ROOT)
+                verify_release_directory(self.root, "ffmpeg-9.0.1-larix.3", REPOSITORY_ROOT)
 
             sdk = next(path for path in self.root.iterdir() if path.suffix == ".zip")
             original = sdk.read_bytes()
@@ -185,7 +200,7 @@ class ReleaseWorkflowContractTests(unittest.TestCase):
         workflow = (REPOSITORY_ROOT / ".github/workflows/release.yml").read_text(
             encoding="utf-8"
         )
-        self.assertIn("ffmpeg-9.0.1-larix.1", workflow)
+        self.assertIn("ffmpeg-9.0.1-larix.2", workflow)
         self.assertRegex(workflow, r"(?m)^  workflow_dispatch:\s*$")
         self.assertIn("artifact_run_id:", workflow)
         self.assertIn("  catalog-from-run:", workflow)
@@ -197,7 +212,7 @@ class ReleaseWorkflowContractTests(unittest.TestCase):
         self.assertIn("name: release-candidate", workflow)
         self.assertIn("needs: catalog", workflow)
         self.assertIn(
-            "github.ref == 'refs/tags/ffmpeg-9.0.1-larix.1'", workflow
+            "github.ref == 'refs/tags/ffmpeg-9.0.1-larix.2'", workflow
         )
         self.assertIn("gh release create", workflow)
         self.assertNotIn("--clobber", workflow)

@@ -18,8 +18,8 @@ from scripts.common.release_manifest import (
 LOCK = {
     "schemaVersion": 1,
     "upstreamVersion": "9.0.1",
-    "packagingRevision": 1,
-    "releaseTag": "ffmpeg-9.0.1-larix.1",
+    "packagingRevision": 2,
+    "releaseTag": "ffmpeg-9.0.1-larix.2",
     "source": {
         "url": "https://ffmpeg.org/releases/ffmpeg-9.0.1.tar.xz",
         "archive": "ffmpeg-9.0.1.tar.xz",
@@ -33,6 +33,7 @@ LOCK = {
         "avformat": 63,
         "swresample": 7,
         "swscale": 10,
+        "avfilter": 12,
     },
 }
 TARGET = {
@@ -47,6 +48,7 @@ TARGET = {
 }
 RUNTIME_FILES = (
     "bin/avcodec-63.dll",
+    "bin/avfilter-12.dll",
     "bin/avformat-63.dll",
     "bin/avutil-61.dll",
     "bin/ffprobe.exe",
@@ -96,6 +98,9 @@ def create_sdk(root: Path, profile: str = 'lgpl') -> None:
         path = root / relative
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(content)
+
+    from scripts.common.dependencies import stage_dependency_provenance
+    stage_dependency_provenance(Path(__file__).resolve().parents[1], root, profile)
 
 
 class ReleaseManifestTests(unittest.TestCase):

@@ -1,0 +1,62 @@
+{
+  "schemaVersion": 1,
+  "dependencies": [
+    {
+      "name": "x264",
+      "version": "31e19f92f00c7003fa115047ce50978bc98c3a0d",
+      "profiles": [
+        "gpl"
+      ],
+      "license": "GPL-2.0-or-later",
+      "root": "x264-31e19f92f00c7003fa115047ce50978bc98c3a0d",
+      "source": {
+        "url": "https://code.videolan.org/videolan/x264/-/archive/31e19f92f00c7003fa115047ce50978bc98c3a0d/x264-31e19f92f00c7003fa115047ce50978bc98c3a0d.tar.bz2",
+        "archive": "x264-31e19f92f00c7003fa115047ce50978bc98c3a0d.tar.bz2",
+        "size": 778279,
+        "sha256": "01a4acb74eea1118c3aa96c3e18ee3384bc1f2bc670f31fb0f63be853e4d9d08"
+      },
+      "licenseFiles": {
+        "COPYING": "32b1062f7da84967e7019d01ab805935caa7ab7321a7ced0e30ebe75e5df1670"
+      }
+    },
+    {
+      "name": "x265",
+      "version": "4.1",
+      "profiles": [
+        "gpl"
+      ],
+      "license": "GPL-2.0-or-later",
+      "root": "x265-4.1",
+      "source": {
+        "url": "https://github.com/Multicorewareinc/x265/archive/refs/tags/4.1.tar.gz",
+        "archive": "x265-4.1.tar.gz",
+        "size": 1725307,
+        "sha256": "631f593ee655cb9f0e440fda7b938f1d798b379834242193947b8240b021ec87"
+      },
+      "licenseFiles": {
+        "COPYING": "d8afb1bcc7a2cfc603683b168d6987ef0a48e59e0da3693bf55c5d33b67e2b49",
+        "source/dynamicHDR10/LICENSE.txt": "47f15d63e82eb8a4de6e46471d5f96cf6d052fd5355944a002c3157880248b69",
+        "source/dynamicHDR10/json11/LICENSE.txt": "950e288a2548cb33f6a90d23958806b0803f510ab17c600d661619a73ae3a6c8"
+      }
+    },
+    {
+      "name": "zimg",
+      "version": "3.0.6",
+      "profiles": [
+        "lgpl",
+        "gpl"
+      ],
+      "license": "WTFPL",
+      "root": "zimg-release-3.0.6",
+      "source": {
+        "url": "https://github.com/sekrit-twc/zimg/archive/refs/tags/release-3.0.6.tar.gz",
+        "archive": "zimg-3.0.6.tar.gz",
+        "size": 326725,
+        "sha256": "be89390f13a5c9b2388ce0f44a5e89364a20c1c57ce46d382b1fcc3967057577"
+      },
+      "licenseFiles": {
+        "COPYING": "7637386b5f81e8a719ca336233149005e5fa28b5e6054ea7b67de49355b0ad40"
+      }
+    }
+  ]
+}

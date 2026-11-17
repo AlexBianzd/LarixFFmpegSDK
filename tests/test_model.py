@@ -27,9 +27,18 @@ COMMON_ARGS = (
     "--disable-ffmpeg",
     "--disable-ffplay",
     "--enable-ffprobe",
-    "--disable-avfilter",
+    "--enable-avfilter",
     "--disable-avdevice",
     "--disable-stripping",
+    '--enable-libzimg',
+    '--disable-hwaccels',
+    '--disable-vulkan',
+    '--disable-metal',
+    '--disable-opencl',
+    '--disable-opengl',
+    '--disable-filters',
+    '--enable-filter=buffer,buffersink,format,scale,zscale,tonemap,setparams,sidedata,exposure',
+    '--pkg-config-flags=--static',
 )
 
 WINDOWS_TARGET = {
@@ -149,7 +158,7 @@ class ConfigureCompositionTests(unittest.TestCase):
         gpl = compose_configure_args(REPOSITORY_ROOT, "gpl", "windows-x64-msvc")
 
         self.assertEqual(lgpl, COMMON_ARGS)
-        self.assertEqual(gpl, COMMON_ARGS + ("--enable-gpl",))
+        self.assertEqual(gpl, COMMON_ARGS + ("--enable-gpl", "--enable-libx264", "--enable-libx265"))
 
     def test_profiles_are_independent_and_share_the_common_boundary(self) -> None:
         for profile in ("lgpl", "gpl"):
@@ -191,11 +200,11 @@ class ConfigureCompositionTests(unittest.TestCase):
         lock = load_lock(LOCK_PATH)
         self.assertEqual(
             target_asset_name(lock, "lgpl", WINDOWS_TARGET),
-            "larix-ffmpeg-sdk-9.0.1-larix.1-lgpl-windows-x64-msvc.zip",
+            "larix-ffmpeg-sdk-9.0.1-larix.2-lgpl-windows-x64-msvc.zip",
         )
         self.assertEqual(
             target_asset_name(lock, "gpl", MACOS_TARGET),
-            "larix-ffmpeg-sdk-9.0.1-larix.1-gpl-macos-arm64.tar.xz",
+            "larix-ffmpeg-sdk-9.0.1-larix.2-gpl-macos-arm64.tar.xz",
         )
 
     def assert_profile_rejected(self, profile: str, contents: str) -> None:

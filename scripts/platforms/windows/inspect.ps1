@@ -30,7 +30,7 @@ if (-not (Get-Command dumpbin.exe -ErrorAction SilentlyContinue)) {
 }
 $dumpbin = (Get-Command dumpbin.exe -ErrorAction Stop).Source
 $expectedPe = @($ExpectedPeCsv.Split(';') | Where-Object { $_ } | Sort-Object)
-if ($expectedPe.Count -ne 6 -or $expectedPe -notcontains 'bin/ffprobe.exe') {
+if ($expectedPe.Count -ne 7 -or $expectedPe -notcontains 'bin/ffprobe.exe') {
     throw 'Expected PE inventory is invalid'
 }
 $actualPe = @(Get-ChildItem -LiteralPath $root -Recurse -File | Where-Object {

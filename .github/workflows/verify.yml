@@ -44,7 +44,7 @@ jobs:
           msystem: MSYS
           release: false
           update: false
-          install: make diffutils
+          install: make diffutils pkgconf
       - name: Install hash-verified NASM 3.02
         shell: powershell
         run: |

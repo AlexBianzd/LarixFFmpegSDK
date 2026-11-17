@@ -1,12 +1,13 @@
 get_filename_component(_larix_ffmpeg_prefix "${CMAKE_CURRENT_LIST_DIR}/../../.." ABSOLUTE)
-set(_larix_ffmpeg_components avutil avcodec avformat swresample swscale)
-set(_larix_ffmpeg_dll_versions 61 63 63 7 10)
+set(_larix_ffmpeg_components avutil avcodec avformat swresample swscale avfilter)
+set(_larix_ffmpeg_dll_versions 61 63 63 7 10 12)
 set(_larix_ffmpeg_macos_files
   libavutil.61.dylib
   libavcodec.63.dylib
   libavformat.63.dylib
   libswresample.7.dylib
-  libswscale.10.dylib)
+  libswscale.10.dylib
+  libavfilter.12.dylib)
 if(WIN32)
   if(NOT MSVC OR NOT CMAKE_SIZEOF_VOID_P EQUAL 8)
     message(FATAL_ERROR "This Larix FFmpeg SDK package requires Windows x64 MSVC")
@@ -70,3 +71,5 @@ unset(_larix_ffmpeg_prefix)
 unset(_implib)
 unset(_runtime)
 unset(_macos_file)
+
+set_property(TARGET LarixFFmpegSDK::avfilter APPEND PROPERTY INTERFACE_LINK_LIBRARIES "LarixFFmpegSDK::avutil;LarixFFmpegSDK::avcodec;LarixFFmpegSDK::swscale;LarixFFmpegSDK::swresample")

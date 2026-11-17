@@ -10,6 +10,7 @@ from pathlib import Path, PurePosixPath
 import stat
 from typing import Any
 
+from scripts.common.dependencies import dependency_records, dependency_licenses, verify_dependency_licenses
 from scripts.common.model import (
     compose_configure_args,
     load_lock,
@@ -19,7 +20,7 @@ from scripts.common.model import (
 from scripts.common.release_schema import validate_release_manifest_schema
 
 
-COMPONENTS = ("avutil", "avcodec", "avformat", "swresample", "swscale")
+COMPONENTS = ("avutil", "avcodec", "avformat", "swresample", "swscale", "avfilter")
 _DEFAULT_LOCK = load_lock(Path(__file__).resolve().parents[2] / "config/ffmpeg.lock.json")
 LIBRARY_VERSIONS = dict(_DEFAULT_LOCK["libraryVersions"])
 WINDOWS_RUNTIME_FILES = tuple(sorted(
@@ -88,9 +89,9 @@ _GENERATED_METADATA = frozenset(
     {"manifest.json", "sbom.spdx.json", "SHA256SUMS"}
 )
 _FORBIDDEN_NAMES = frozenset(
-    {"ffmpeg.exe", "ffplay.exe", "avfilter.lib", "avdevice.lib", "postproc.lib"}
+    {"ffmpeg.exe", "ffplay.exe", "avdevice.lib", "postproc.lib"}
 )
-_FORBIDDEN_COMPONENT_MARKERS = ("avfilter", "avdevice", "postproc")
+_FORBIDDEN_COMPONENT_MARKERS = ("avdevice", "postproc")
 _MAX_FILES = 100_000
 _WINDOWS_RESERVED_NAMES = frozenset(
     {"aux", "clock$", "con", "conin$", "conout$", "nul", "prn"}
@@ -237,6 +238,7 @@ def _effective_license(profile: str) -> str:
 def _required_license_files(profile: str) -> set[str]:
     result = {"FFmpeg-LICENSE.md", "LarixFFmpegSDK-MIT.txt"}
     result.add("COPYING.LGPLv2.1" if profile == "lgpl" else "COPYING.GPLv2")
+    result.update(dependency_licenses(Path(__file__).resolve().parents[2], profile))
     return result
 
 
@@ -260,6 +262,7 @@ def _verify_staged_provenance(
 ) -> None:
     provenance = sdk_root / _METADATA_DIRECTORY.as_posix() / 'provenance'
     expected = {
+        'config/dependencies.lock.json': repo_root / 'config/dependencies.lock.json',
         'config/ffmpeg.lock.json': repo_root / 'config' / 'ffmpeg.lock.json',
         f'config/{target_id}.json': repo_root / 'config' / 'targets' / f'{target_id}.json',
         'config/common.conf': repo_root / 'config' / 'profiles' / 'common.conf',
@@ -383,6 +386,7 @@ def _validate_payload_contract(
     profile: str,
     target: dict[str, object],
 ) -> None:
+    verify_dependency_licenses(Path(__file__).resolve().parents[2], root, profile)
     paths = [str(entry["path"]) for entry in entries]
     if len(paths) != len(set(paths)):
         raise ValueError("SDK inventory contains duplicate paths")
@@ -451,6 +455,7 @@ def _build_manifest(
     configure_args.extend(platform_configure_args(target_id))
     return {
         "assetName": target_asset_name(lock, profile, target),
+        "externalDependencies": dependency_records(repo_root, profile),
         "components": list(COMPONENTS),
         "configureArgs": configure_args,
         "effectiveLicense": _effective_license(profile),
@@ -463,7 +468,7 @@ def _build_manifest(
         "releaseTag": lock["releaseTag"],
         "runtimeDependencies": runtime_dependencies,
         "runtimeFiles": list(runtime_files_for_target(target_id)),
-        "schemaVersion": 1,
+        "schemaVersion": 2,
         "source": dict(source),
         "symbols": list(symbol_files_for_target(target_id)),
         "target": dict(target),
@@ -490,7 +495,7 @@ def _sbom(manifest: dict[str, object]) -> dict[str, object]:
     target = manifest["target"]
     sdk_package_id = "SPDXRef-Package-LarixFFmpegSDK"
     source_package_id = "SPDXRef-Package-FFmpeg"
-    aggregate_license = f"MIT AND {manifest['effectiveLicense']}"
+    aggregate_license = f"MIT AND {manifest['effectiveLicense']} AND WTFPL"
     sdk_package = {
         "SPDXID": sdk_package_id,
         "name": "Larix FFmpeg SDK",
@@ -529,6 +534,12 @@ def _sbom(manifest: dict[str, object]) -> dict[str, object]:
             "relatedSpdxElement": source_package_id,
         }
     ]
+    dependency_packages=[]
+    for entry in manifest['externalDependencies']:
+        package_id='SPDXRef-Package-'+entry['name']
+        dependency_packages.append({'SPDXID':package_id,'name':entry['name'],'versionInfo':entry['version'],'downloadLocation':entry['source']['url'],'filesAnalyzed':False,'checksums':[{'algorithm':'SHA256','checksumValue':entry['source']['sha256']}],'licenseDeclared':entry['license'],'licenseConcluded':entry['license'],'copyrightText':'NOASSERTION'})
+        relationships.append({'spdxElementId':sdk_package_id,'relationshipType':'CONTAINS','relatedSpdxElement':package_id})
+        relationships.append({'spdxElementId':sdk_package_id,'relationshipType':'STATIC_LINK','relatedSpdxElement':package_id})
     relationships.extend(
         {
             "spdxElementId": sdk_package_id,
@@ -550,7 +561,7 @@ def _sbom(manifest: dict[str, object]) -> dict[str, object]:
         ),
         "files": files,
         "name": f"Larix FFmpeg SDK {manifest['licenseProfile']} {target['id']}",
-        "packages": [sdk_package, source_package],
+        "packages": [sdk_package, source_package, *dependency_packages],
         "relationships": relationships,
         "spdxVersion": "SPDX-2.3",
     }
@@ -693,6 +704,7 @@ def verify_release_metadata(
     )
     expected_identity = {
         "assetName": target_asset_name(lock, profile, expected_target),
+        "externalDependencies": dependency_records(contract_root, profile),
         "components": list(COMPONENTS),
         "configureArgs": list(
             compose_configure_args(contract_root, profile, str(expected_target["id"]))

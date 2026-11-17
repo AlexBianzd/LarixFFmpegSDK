@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "files": [
+    {
+      "name": "hdr10plus.json",
+      "size": 6824,
+      "sha256": "29e83ba29fa1fa50f2667289b76bf39528e52fc51d8f3f1cb35859cf527190d2",
+      "provenance": "Original deterministic synthetic metadata; not a grading master or certification fixture"
+    }
+  ]
+}

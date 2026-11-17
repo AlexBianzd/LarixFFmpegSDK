@@ -6,6 +6,7 @@
 #include <libavutil/mem.h>
 #include <libavutil/samplefmt.h>
 #include <libavcodec/avcodec.h>
+#include <libavfilter/avfilter.h>
 #include <libavformat/avformat.h>
 #include <libswresample/swresample.h>
 #include <libswscale/swscale.h>
@@ -114,10 +115,10 @@ done:
 int main(int argc, char** argv) {
   if (argc != 2) return 2;
   const char* media = argv[1];
-  const unsigned versions[5] = {
+  const unsigned versions[6] = {
       avutil_version(), avcodec_version(), avformat_version(),
-      swresample_version(), swscale_version()};
-  for (int index = 0; index < 5; ++index) if (versions[index] == 0) return 10 + index;
+      swresample_version(), swscale_version(), avfilter_version()};
+  for (int index = 0; index < 6; ++index) if (versions[index] == 0) return 10 + index;
   if (!decode_one_frame(media)) return 20;
   if (!convert_pixels()) return 21;
   if (!convert_audio()) return 22;

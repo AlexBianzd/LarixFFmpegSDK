@@ -7,7 +7,7 @@ artifacts/
 downloads/
 source/
 .worktrees/
-.superpowers/sdd/
+.superpowers/
 
 # CMake-generated artifacts that occasionally leak outside build directories
 CMakeCache.txt
@@ -40,3 +40,9 @@ CMakeUserPresets.json
 *.keystore
 *.p12
 *.pfx
+
+# Public documentation contains version release reports only.
+/docs/*
+!/docs/reports/
+/docs/reports/*
+!/docs/reports/*-release.md

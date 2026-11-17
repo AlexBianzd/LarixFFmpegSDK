@@ -1,0 +1,340 @@
+{
+  "SceneInfo": [
+    {
+      "TargetedSystemDisplayMaximumLuminance": 10000000,
+      "LuminanceParameters": {
+        "AverageRGB": 10000,
+        "MaxScl": [
+          50000,
+          50000,
+          50000
+        ],
+        "LuminanceDistributions": {
+          "DistributionIndex": [
+            50,
+            99
+          ],
+          "DistributionValues": [
+            10000,
+            50000
+          ]
+        }
+      }
+    },
+    {
+      "TargetedSystemDisplayMaximumLuminance": 10000000,
+      "LuminanceParameters": {
+        "AverageRGB": 10100,
+        "MaxScl": [
+          50000,
+          50000,
+          50000
+        ],
+        "LuminanceDistributions": {
+          "DistributionIndex": [
+            50,
+            99
+          ],
+          "DistributionValues": [
+            10000,
+            50000
+          ]
+        }
+      }
+    },
+    {
+      "TargetedSystemDisplayMaximumLuminance": 10000000,
+      "LuminanceParameters": {
+        "AverageRGB": 10200,
+        "MaxScl": [
+          50000,
+          50000,
+          50000
+        ],
+        "LuminanceDistributions": {
+          "DistributionIndex": [
+            50,
+            99
+          ],
+          "DistributionValues": [
+            10000,
+            50000
+          ]
+        }
+      }
+    },
+    {
+      "TargetedSystemDisplayMaximumLuminance": 10000000,
+      "LuminanceParameters": {
+        "AverageRGB": 10300,
+        "MaxScl": [
+          50000,
+          50000,
+          50000
+        ],
+        "LuminanceDistributions": {
+          "DistributionIndex": [
+            50,
+            99
+          ],
+          "DistributionValues": [
+            10000,
+            50000
+          ]
+        }
+      }
+    },
+    {
+      "TargetedSystemDisplayMaximumLuminance": 10000000,
+      "LuminanceParameters": {
+        "AverageRGB": 10400,
+        "MaxScl": [
+          50000,
+          50000,
+          50000
+        ],
+        "LuminanceDistributions": {
+          "DistributionIndex": [
+            50,
+            99
+          ],
+          "DistributionValues": [
+            10000,
+            50000
+          ]
+        }
+      }
+    },
+    {
+      "TargetedSystemDisplayMaximumLuminance": 10000000,
+      "LuminanceParameters": {
+        "AverageRGB": 10500,
+        "MaxScl": [
+          50000,
+          50000,
+          50000
+        ],
+        "LuminanceDistributions": {
+          "DistributionIndex": [
+            50,
+            99
+          ],
+          "DistributionValues": [
+            10000,
+            50000
+          ]
+        }
+      }
+    },
+    {
+      "TargetedSystemDisplayMaximumLuminance": 10000000,
+      "LuminanceParameters": {
+        "AverageRGB": 10600,
+        "MaxScl": [
+          50000,
+          50000,
+          50000
+        ],
+        "LuminanceDistributions": {
+          "DistributionIndex": [
+            50,
+            99
+          ],
+          "DistributionValues": [
+            10000,
+            50000
+          ]
+        }
+      }
+    },
+    {
+      "TargetedSystemDisplayMaximumLuminance": 10000000,
+      "LuminanceParameters": {
+        "AverageRGB": 10700,
+        "MaxScl": [
+          50000,
+          50000,
+          50000
+        ],
+        "LuminanceDistributions": {
+          "DistributionIndex": [
+            50,
+            99
+          ],
+          "DistributionValues": [
+            10000,
+            50000
+          ]
+        }
+      }
+    },
+    {
+      "TargetedSystemDisplayMaximumLuminance": 10000000,
+      "LuminanceParameters": {
+        "AverageRGB": 10800,
+        "MaxScl": [
+          50000,
+          50000,
+          50000
+        ],
+        "LuminanceDistributions": {
+          "DistributionIndex": [
+            50,
+            99
+          ],
+          "DistributionValues": [
+            10000,
+            50000
+          ]
+        }
+      }
+    },
+    {
+      "TargetedSystemDisplayMaximumLuminance": 10000000,
+      "LuminanceParameters": {
+        "AverageRGB": 10900,
+        "MaxScl": [
+          50000,
+          50000,
+          50000
+        ],
+        "LuminanceDistributions": {
+          "DistributionIndex": [
+            50,
+            99
+          ],
+          "DistributionValues": [
+            10000,
+            50000
+          ]
+        }
+      }
+    },
+    {
+      "TargetedSystemDisplayMaximumLuminance": 10000000,
+      "LuminanceParameters": {
+        "AverageRGB": 11000,
+        "MaxScl": [
+          50000,
+          50000,
+          50000
+        ],
+        "LuminanceDistributions": {
+          "DistributionIndex": [
+            50,
+            99
+          ],
+          "DistributionValues": [
+            10000,
+            50000
+          ]
+        }
+      }
+    },
+    {
+      "TargetedSystemDisplayMaximumLuminance": 10000000,
+      "LuminanceParameters": {
+        "AverageRGB": 11100,
+        "MaxScl": [
+          50000,
+          50000,
+          50000
+        ],
+        "LuminanceDistributions": {
+          "DistributionIndex": [
+            50,
+            99
+          ],
+          "DistributionValues": [
+            10000,
+            50000
+          ]
+        }
+      }
+    },
+    {
+      "TargetedSystemDisplayMaximumLuminance": 10000000,
+      "LuminanceParameters": {
+        "AverageRGB": 11200,
+        "MaxScl": [
+          50000,
+          50000,
+          50000
+        ],
+        "LuminanceDistributions": {
+          "DistributionIndex": [
+            50,
+            99
+          ],
+          "DistributionValues": [
+            10000,
+            50000
+          ]
+        }
+      }
+    },
+    {
+      "TargetedSystemDisplayMaximumLuminance": 10000000,
+      "LuminanceParameters": {
+        "AverageRGB": 11300,
+        "MaxScl": [
+          50000,
+          50000,
+          50000
+        ],
+        "LuminanceDistributions": {
+          "DistributionIndex": [
+            50,
+            99
+          ],
+          "DistributionValues": [
+            10000,
+            50000
+          ]
+        }
+      }
+    },
+    {
+      "TargetedSystemDisplayMaximumLuminance": 10000000,
+      "LuminanceParameters": {
+        "AverageRGB": 11400,
+        "MaxScl": [
+          50000,
+          50000,
+          50000
+        ],
+        "LuminanceDistributions": {
+          "DistributionIndex": [
+            50,
+            99
+          ],
+          "DistributionValues": [
+            10000,
+            50000
+          ]
+        }
+      }
+    },
+    {
+      "TargetedSystemDisplayMaximumLuminance": 10000000,
+      "LuminanceParameters": {
+        "AverageRGB": 11500,
+        "MaxScl": [
+          50000,
+          50000,
+          50000
+        ],
+        "LuminanceDistributions": {
+          "DistributionIndex": [
+            50,
+            99
+          ],
+          "DistributionValues": [
+            10000,
+            50000
+          ]
+        }
+      }
+    }
+  ]
+}
