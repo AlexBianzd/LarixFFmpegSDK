@@ -432,6 +432,8 @@ def _validate_payload_contract(
             marker in name for marker in _FORBIDDEN_COMPONENT_MARKERS
         ):
             raise ValueError(f"SDK package contains a forbidden component: {path}")
+        if name.endswith('.lib') and path not in {f'lib/{component}.lib' for component in COMPONENTS}:
+            raise ValueError(f'SDK package contains an undeclared static/import library: {path}')
         if name.endswith(".a"):
             raise ValueError(f"SDK package contains a static archive: {path}")
         if target_id == "macos-arm64" and name.endswith((".dll", ".lib", ".exe")):

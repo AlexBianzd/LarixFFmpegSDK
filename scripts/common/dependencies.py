@@ -93,7 +93,7 @@ def dependency_licenses(repo: Path, profile: str) -> dict[str,tuple[Path,str]]:
     result={}
     for entry in selected_dependencies(repo,profile):
         for relative,digest in entry['licenseFiles'].items():
-            result[entry['name']+'-'+relative.replace('/','-')]=(repo/'licenses/dependencies'/entry['name']/relative,digest)
+            result[entry['name']+'-'+relative.replace('/','-')]=(repo/'licenses/dependencies'/entry['name']/relative.replace('/','-'),digest)
     return result
 
 def stage_dependency_provenance(repo: Path, sdk: Path, profile: str) -> None:

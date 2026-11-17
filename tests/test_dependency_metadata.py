@@ -22,3 +22,9 @@ class DependencyMetadataTests(unittest.TestCase):
    generate_release_metadata(sdk,LOCK,'gpl',TARGET)
    license.write_bytes(b'wrong license')
    with self.assertRaises(ValueError):generate_release_metadata(sdk,LOCK,'gpl',TARGET)
+
+ def test_static_encoder_libraries_cannot_be_packaged(self):
+  with tempfile.TemporaryDirectory() as td:
+   sdk=Path(td)/'sdk';create_sdk(sdk,'gpl')
+   (sdk/'lib/x265.lib').write_bytes(b'static encoder library')
+   with self.assertRaises(ValueError):generate_release_metadata(sdk,LOCK,'gpl',TARGET)
