@@ -58,7 +58,7 @@ MACOS_PLATFORM_CONFIGURE_ARGS = (
     "--extra-ldflags=-mmacosx-version-min=12.0 -Wl,-headerpad_max_install_names",
     "--prefix=../install",
 )
-# Retained as the public Windows contract used by existing Task 4 tests.
+# Public Windows package inventory used by build and test tooling.
 PLATFORM_CONFIGURE_ARGS = WINDOWS_PLATFORM_CONFIGURE_ARGS
 
 

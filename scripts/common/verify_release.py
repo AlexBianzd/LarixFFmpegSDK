@@ -55,9 +55,7 @@ def _load_json(path: Path) -> dict[str, object]:
     return value
 
 
-def expected_release_asset_names(
-    lock: dict[str, object], repo_root: Path
-) -> set[str]:
+def expected_release_asset_names(lock: dict[str, object], repo_root: Path) -> set[str]:
     source = lock.get("source")
     profiles = lock.get("profiles")
     if not isinstance(source, dict) or not isinstance(source.get("archive"), str):
@@ -65,7 +63,9 @@ def expected_release_asset_names(
     if profiles != ["lgpl", "gpl"]:
         raise ValueError("release profile matrix is invalid")
     names = {source["archive"]}
-    names.update(e["source"]["archive"] for e in load_dependency_lock(repo_root)["dependencies"])
+    names.update(
+        e["source"]["archive"] for e in load_dependency_lock(repo_root)["dependencies"]
+    )
     for target_id in _TARGET_IDS:
         target = load_target(repo_root / "config" / "targets" / f"{target_id}.json")
         for profile in profiles:
@@ -79,11 +79,15 @@ def _verify_source(path: Path, lock: dict[str, object]) -> None:
         raise ValueError("release source identity is invalid")
     if path.name != source.get("archive"):
         raise ValueError("release source archive name is invalid")
-    if path.stat().st_size != source.get("size") or _sha256(path) != source.get("sha256"):
+    if path.stat().st_size != source.get("size") or _sha256(path) != source.get(
+        "sha256"
+    ):
         raise ValueError("release source archive does not match the lock")
 
 
-def _verify_sdk_archive(archive: Path, repo_root: Path | None = None) -> dict[str, object]:
+def _verify_sdk_archive(
+    archive: Path, repo_root: Path | None = None
+) -> dict[str, object]:
     contract_root = (repo_root or Path.cwd()).resolve()
     with tempfile.TemporaryDirectory(prefix="larix-release-sdk-") as temporary:
         sdk = extract_package(archive, Path(temporary) / "sdk")
@@ -168,25 +172,26 @@ def assemble_release_candidate(
         raise ValueError("release candidate payload inventory is not exact")
     source_name = str(lock["source"]["archive"])
     _verify_source(root / source_name, lock)
-    dependency_sources=load_dependency_lock(repo_root)['dependencies']
-    source_names={source_name}
+    dependency_sources = load_dependency_lock(repo_root)["dependencies"]
+    source_names = {source_name}
     entries = [_catalog_asset(root / source_name, "source")]
     for entry in dependency_sources:
-        name=entry['source']['archive'];source_names.add(name)
-        _verify_source(root/name,{'source':entry['source']})
-        entries.append(_catalog_asset(root/name,'dependency-source'))
+        name = entry["source"]["archive"]
+        source_names.add(name)
+        _verify_source(root / name, {"source": entry["source"]})
+        entries.append(_catalog_asset(root / name, "dependency-source"))
     for name in sorted(expected - source_names):
         archive = root / name
         manifest = _verify_sdk_archive(archive, repo_root)
-        profile, target_id = _verify_sdk_identity(
-            archive, manifest, lock, repo_root
-        )
+        profile, target_id = _verify_sdk_identity(archive, manifest, lock, repo_root)
         entries.append(_catalog_asset(archive, "sdk", profile, target_id))
     catalog: dict[str, object] = {
         "assets": sorted(entries, key=lambda entry: str(entry["name"])),
         "releaseTag": tag,
         "schemaVersion": 2,
-        "dependencySources": [{"name":e["name"],"source":e["source"]} for e in dependency_sources],
+        "dependencySources": [
+            {"name": e["name"], "source": e["source"]} for e in dependency_sources
+        ],
         "source": lock["source"],
     }
     (root / RELEASE_CATALOG).write_bytes(_canonical_json(catalog))
@@ -220,7 +225,13 @@ def verify_release_directory(
         raise ValueError("release asset inventory is not exact")
     _verify_sums(root, payload | {RELEASE_CATALOG})
     catalog = _load_json(root / RELEASE_CATALOG)
-    if set(catalog) != {"assets", "releaseTag", "schemaVersion", "source", "dependencySources"}:
+    if set(catalog) != {
+        "assets",
+        "releaseTag",
+        "schemaVersion",
+        "source",
+        "dependencySources",
+    }:
         raise ValueError("release catalog fields are invalid")
     if (
         catalog.get("schemaVersion") != 2
@@ -231,25 +242,30 @@ def verify_release_directory(
         raise ValueError("release catalog identity is invalid")
     entries = catalog["assets"]
     names = [entry.get("name") for entry in entries if isinstance(entry, dict)]
-    if len(names) != len(entries) or len(names) != len(set(names)) or set(names) != payload:
+    if (
+        len(names) != len(entries)
+        or len(names) != len(set(names))
+        or set(names) != payload
+    ):
         raise ValueError("release catalog asset inventory is invalid")
     source_name = str(lock["source"]["archive"])
     _verify_source(root / source_name, lock)
-    dependency_sources=load_dependency_lock(repo_root)['dependencies']
-    if catalog.get('dependencySources') != [{'name':e['name'],'source':e['source']} for e in dependency_sources]:
-        raise ValueError('release dependency source identities do not match lock')
-    source_names={source_name}
+    dependency_sources = load_dependency_lock(repo_root)["dependencies"]
+    if catalog.get("dependencySources") != [
+        {"name": e["name"], "source": e["source"]} for e in dependency_sources
+    ]:
+        raise ValueError("release dependency source identities do not match lock")
+    source_names = {source_name}
     expected_entries = [_catalog_asset(root / source_name, "source")]
     for entry in dependency_sources:
-        name=entry['source']['archive'];source_names.add(name)
-        _verify_source(root/name,{'source':entry['source']})
-        expected_entries.append(_catalog_asset(root/name,'dependency-source'))
+        name = entry["source"]["archive"]
+        source_names.add(name)
+        _verify_source(root / name, {"source": entry["source"]})
+        expected_entries.append(_catalog_asset(root / name, "dependency-source"))
     for name in sorted(payload - source_names):
         archive = root / name
         manifest = _verify_sdk_archive(archive, repo_root)
-        profile, target_id = _verify_sdk_identity(
-            archive, manifest, lock, repo_root
-        )
+        profile, target_id = _verify_sdk_identity(archive, manifest, lock, repo_root)
         expected_entries.append(_catalog_asset(archive, "sdk", profile, target_id))
     expected_entries.sort(key=lambda entry: str(entry["name"]))
     if entries != expected_entries:
@@ -263,13 +279,18 @@ def download_locked_source(asset_directory: Path, repo_root: Path) -> Path:
     destination = asset_directory / str(source["archive"])
     if destination.exists() or destination.is_symlink():
         raise ValueError("release source destination already exists")
-    request = urllib.request.Request(str(source["url"]), headers={"User-Agent": "LarixFFmpegSDK/1"})
+    request = urllib.request.Request(
+        str(source["url"]), headers={"User-Agent": "LarixFFmpegSDK/1"}
+    )
     with urllib.request.urlopen(request, timeout=60) as response:
         final = urllib.parse.urlparse(response.geturl())
         if final.scheme != "https":
             raise ValueError("release source redirect is not HTTPS")
         data = response.read(int(source["size"]) + 1)
-    if len(data) != source["size"] or hashlib.sha256(data).hexdigest() != source["sha256"]:
+    if (
+        len(data) != source["size"]
+        or hashlib.sha256(data).hexdigest() != source["sha256"]
+    ):
         raise ValueError("downloaded release source does not match the lock")
     destination.write_bytes(data)
     return destination
@@ -282,10 +303,20 @@ def verify_github_release(reference: str, repo_root: Path) -> dict[str, object]:
     if repository.count("/") != 1 or not tag:
         raise ValueError("GitHub release reference is invalid")
     api = f"https://api.github.com/repos/{repository}/releases/tags/{urllib.parse.quote(tag)}"
-    request = urllib.request.Request(api, headers={"Accept": "application/vnd.github+json", "User-Agent": "LarixFFmpegSDK/1"})
+    request = urllib.request.Request(
+        api,
+        headers={
+            "Accept": "application/vnd.github+json",
+            "User-Agent": "LarixFFmpegSDK/1",
+        },
+    )
     with urllib.request.urlopen(request, timeout=60) as response:
         release = json.load(response)
-    if release.get("tag_name") != tag or release.get("draft") or release.get("prerelease"):
+    if (
+        release.get("tag_name") != tag
+        or release.get("draft")
+        or release.get("prerelease")
+    ):
         raise ValueError("GitHub Release identity is invalid")
     assets = release.get("assets")
     if not isinstance(assets, list):
@@ -304,7 +335,9 @@ def verify_github_release(reference: str, repo_root: Path) -> dict[str, object]:
             if type(size) is not int or size < 0 or size > _MAX_RELEASE_ASSET_BYTES:
                 raise ValueError("GitHub Release asset size is invalid")
             names.add(name)
-            download = urllib.request.Request(url, headers={"User-Agent": "LarixFFmpegSDK/1"})
+            download = urllib.request.Request(
+                url, headers={"User-Agent": "LarixFFmpegSDK/1"}
+            )
             with urllib.request.urlopen(download, timeout=60) as response:
                 data = response.read(size + 1)
             if len(data) != size:
@@ -326,7 +359,9 @@ def _main() -> int:
     repo_root = arguments.repo_root.resolve()
     if arguments.github_release:
         if not arguments.anonymous or arguments.asset_directory or arguments.tag:
-            parser.error("GitHub Release verification requires only --github-release --anonymous")
+            parser.error(
+                "GitHub Release verification requires only --github-release --anonymous"
+            )
         verify_github_release(arguments.github_release, repo_root)
         return 0
     if arguments.asset_directory is None or not arguments.tag or arguments.anonymous:
@@ -335,10 +370,11 @@ def _main() -> int:
     root.mkdir(parents=True, exist_ok=True)
     if arguments.download_source:
         download_locked_source(root, repo_root)
-        for entry in load_dependency_lock(repo_root)['dependencies']:
-            destination=root/entry['source']['archive']
-            if destination.exists() or destination.is_symlink():raise ValueError('dependency source destination already exists')
-            _download(entry['source'],destination)
+        for entry in load_dependency_lock(repo_root)["dependencies"]:
+            destination = root / entry["source"]["archive"]
+            if destination.exists() or destination.is_symlink():
+                raise ValueError("dependency source destination already exists")
+            _download(entry["source"], destination)
     if arguments.assemble:
         assemble_release_candidate(root, arguments.tag, repo_root)
     else:

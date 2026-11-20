@@ -18,6 +18,22 @@ upstream source archives, a release catalog, and top-level checksums. See the
 for the included libraries, capability boundaries, exact assets, hashes,
 toolchains, and verification evidence.
 
+## Repository map
+
+| Path | Purpose |
+| --- | --- |
+| [`config/`](config/) | Source and dependency locks, license profiles, target ABIs, and JSON schemas |
+| [`scripts/`](scripts/) | Public build commands, platform drivers, and shared packaging and verification tools |
+| [`cmake/`](cmake/) | Installed CMake package template and out-of-tree zimg build adapter |
+| [`tests/`](tests/) | Python contract tests, native C consumers, and media fixtures |
+| [`.github/workflows/`](.github/workflows/) | Pull request checks, full native verification, and tag-based publication |
+| [`licenses/`](licenses/) | Notices for bundled external dependencies |
+| [`patches/`](patches/) | Empty FFmpeg patch set, recorded in SDK provenance |
+| [`docs/reports/`](docs/reports/) | Version release reports |
+
+Build output defaults to the ignored `build/` directory. Keep local inspection
+results and working notes under the ignored `artifacts/` directory.
+
 ## Source lock
 
 The exact approved FFmpeg archive is recorded in
@@ -27,14 +43,22 @@ and license profiles must all match exactly.
 
 ## CPU encoding and HDR processing (revision 2)
 
-Revision 2 retains unmodified FFmpeg 9.0.1 and adds `avfilter` plus hash-locked
-zimg to both license profiles. The GPL profile also statically includes locked
-x264 (8/10-bit) and x265 4.1 (8/10/12-bit multilib, dynamicHDR10 enabled for 10-bit).
-The 12-bit x265 implementation is statically included to keep capability probes from loading a system encoder. No encoder static archives are shipped in the SDK. Exact sources and their
-licenses are recorded in `config/dependencies.lock.json` and the package SBOM.
+| Capability | LGPL SDK | GPL SDK |
+| --- | --- | --- |
+| H.264 and HEVC software decoding | Included | Included |
+| H.264 software encoding | — | x264, 8/10-bit 4:2:0 |
+| HEVC software encoding | — | x265, 8/10/12-bit |
+| HEVC HDR10/HLG encoding | — | x265 Main 10 |
+| CPU HDR-to-SDR and SDR-to-PQ/HLG conversion | avfilter + zimg | avfilter + zimg |
 
-Use the native FFmpeg APIs: `libx264` covers 8-bit Baseline/Main/High and 10-bit
-High 10; `libx265` covers HEVC Main/Main 10/Main 12. CPU `zscale`, `tonemap` and
+Both profiles statically link zimg into avfilter. The GPL profile also links
+x264 and x265 into avcodec. The pinned 12-bit x265 implementation keeps
+capability probes from loading a system encoder. See the
+[dependency lock](config/dependencies.lock.json) and the packaged SBOM for exact
+sources and licenses.
+
+The native `libx264` encoder covers 8-bit Baseline/Main/High and 10-bit High 10.
+The `libx265` encoder covers HEVC Main/Main 10/Main 12. CPU `zscale`, `tonemap` and
 `exposure` filters support the documented HDR10/HLG and SDR conversion paths.
 All builds exclude GPU processing, hardware codecs and display/player modules.
 The C consumers in `tests/consumer` exercise encoding, delayed-frame flush,
@@ -57,18 +81,19 @@ highlight detail absent from the SDR input.
 ```
 
 Use `-Profile gpl` for the explicit GPL profile. The driver requires Visual
-Studio 2022 C++ tools, NASM, MSYS2 Bash, GNU make and diffutils, CMake 3.25 through 3.x, pkgconf (MSYS2), and
-Python 3.12 or newer. It never downloads or installs tools. Optional
+Studio 2022 C++ tools, NASM, MSYS2 Bash, GNU make and diffutils, plus
+MSYS2 pkgconf, CMake 3.25 through 3.x, and Python 3.12 or newer. Install these tools before
+building. Optional
 `LARIX_NASM`, `LARIX_MSYS2_BASH`, `LARIX_MSYS2_MAKE`, `LARIX_CMAKE`, and
 `LARIX_PYTHON` variables may point to existing installations.
 
 Each ZIP contains shared `avutil`, `avcodec`, `avformat`, `avfilter`,
-`swresample`, and `swscale` libraries, `ffprobe.exe`, public headers, MSVC import libraries,
-relocatable `LarixFFmpegSDK::*` CMake targets, license/source provenance,
+`swresample`, and `swscale` libraries, `ffprobe.exe`, public headers, MSVC import
+libraries, relocatable `LarixFFmpegSDK::*` CMake targets, license/source provenance,
 profile-correct FFmpeg license texts, PDB symbols, canonical metadata, an
-SPDX 2.3 SBOM, and `SHA256SUMS`. Packaging and
-verification reject undeclared files, static libraries, forbidden FFmpeg
-components, unsafe archive paths, and MSYS2/MinGW runtime dependencies.
+SPDX 2.3 SBOM, and `SHA256SUMS`. Packaging and verification reject undeclared
+files, static archives, forbidden FFmpeg components, unsafe archive paths, and
+MSYS2/MinGW runtime dependencies.
 Release manifests record stable SOURCE, BUILD, INSTALL, and OUTPUT aliases;
 the Windows driver substitutes actual paths only for compilation so local
 machine paths do not enter release provenance.
@@ -84,14 +109,46 @@ an exact minimum deployment target of macOS 12.0.
 ./scripts/build-macos.sh --profile gpl --configuration Release --output-root build/macos-gpl
 ```
 
-The driver requires Xcode Command Line Tools with Apple Clang, `make`, `pkg-config`, CMake
-3.25 through 3.x, and Python 3.12 or newer. It does not install tools. Each
+The driver requires Xcode with Apple Clang, `make`, `pkg-config`, CMake 3.25
+through 3.x, and Python 3.12 or newer. Install these tools before building. Each
 deterministic `.tar.xz` contains the six versioned shared dylibs, `ffprobe`,
 public headers, relocatable `LarixFFmpegSDK::*` CMake targets, exact legal and
 source provenance, canonical manifest/SBOM/checksums, and no static archives.
 Verification uses `file`, `otool`, and `vtool` to require arm64, macOS 12.0,
 SDK-relative `@rpath` install names, and only packaged FFmpeg or allowlisted
 system dependencies before building and running the relocated C consumer.
+
+## Use and verify an SDK package
+
+Extract the package for your platform and license profile. Pass the extracted
+root to CMake with `-DCMAKE_PREFIX_PATH=/path/to/extracted/sdk` and link to
+the installed targets.
+
+```cmake
+find_package(LarixFFmpegSDK CONFIG REQUIRED)
+target_link_libraries(my_app PRIVATE
+  LarixFFmpegSDK::avformat LarixFFmpegSDK::avcodec LarixFFmpegSDK::avutil)
+```
+
+For HDR processing, also link `LarixFFmpegSDK::avfilter`. On Windows, deploy
+the package DLLs alongside your executable or put the SDK's `bin/` directory
+on the runtime search path. On macOS, make the SDK's `lib/` directory
+available through your application's runtime search paths for `@rpath`.
+
+Run the contract suite from the repository root:
+
+```bash
+python -m unittest discover -s tests -p 'test_*.py'
+```
+
+On the package's native platform, the SDK verifier checks the archive,
+relocates it, and builds and runs the C consumers. On Windows
+and macOS, the verifier requires the toolchain versions recorded in the package
+manifest.
+
+```bash
+python -m scripts.common.verify_sdk --archive path/to/sdk-archive
+```
 
 ## GitHub verification
 
@@ -112,16 +169,19 @@ use larger, paid, or self-hosted runners and does not publish release assets.
 ## Immutable releases
 
 The revision 2 tag `ffmpeg-9.0.1-larix.2` builds all four target/profile SDKs again
-on standard public runners. Only the final aggregation job receives
-`contents: write`; build jobs remain read-only. The public Release contains the
-four SDK archives, the hash-locked official FFmpeg and x264/x265/zimg source archives, a canonical
-`release-catalog.json`, and top-level `SHA256SUMS`. Existing releases or assets
-are never overwritten; a correction requires a new packaging revision.
+on standard public runners. Only the final publication job receives
+`contents: write`. Build and catalog jobs have read-only repository access.
+The public Release contains four SDK archives, four pinned source archives
+(FFmpeg, x264, x265 and zimg), a canonical `release-catalog.json`, and
+top-level `SHA256SUMS`. A correction requires a new packaging revision.
 
 Anyone can verify the Release without GitHub credentials:
 
 ```bash
 python -m scripts.common.verify_release \
-  --github-release AlexBianzd/LarixFFmpegSDK@ffmpeg-9.0.1-larix.1 \
+  --github-release AlexBianzd/LarixFFmpegSDK@ffmpeg-9.0.1-larix.2 \
   --anonymous
 ```
+
+The verifier uses the checked-out source and dependency locks. To verify a
+historical release, use a separate checkout of its matching tag.

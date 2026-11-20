@@ -23,19 +23,16 @@ from scripts.common.windows_toolchain import (
 )
 
 
-def _require_archive_identity(
-    archive: Path, manifest: dict[str, object]
-) -> None:
+def _require_archive_identity(archive: Path, manifest: dict[str, object]) -> None:
     asset_name = manifest.get("assetName")
     if not isinstance(asset_name, str) or archive.name != asset_name:
         raise ValueError("archive filename does not match the release manifest")
 
 
-def _require_inspection_report(
-    report: object, manifest: dict[str, object]
-) -> None:
+def _require_inspection_report(report: object, manifest: dict[str, object]) -> None:
     if not isinstance(report, dict) or set(report) != {
-        "runtimeDependencies", "toolchain"
+        "runtimeDependencies",
+        "toolchain",
     }:
         raise ValueError("inspection report fields are invalid")
     target = manifest.get("target")
@@ -47,7 +44,9 @@ def _require_inspection_report(
         raise ValueError("inspected runtime dependencies do not match the manifest")
     declared_toolchain = manifest.get("toolchain")
     observed_toolchain = report.get("toolchain")
-    if not isinstance(declared_toolchain, dict) or not isinstance(observed_toolchain, dict):
+    if not isinstance(declared_toolchain, dict) or not isinstance(
+        observed_toolchain, dict
+    ):
         raise ValueError("inspection toolchain identity is invalid")
     normalized_declared = _normalize_toolchain(declared_toolchain, target)
     normalized_observed = _normalize_toolchain(observed_toolchain, target)
@@ -99,69 +98,94 @@ def verify_ffprobe_inputs(
     documents: list[dict[str, object]] = []
     for path in (video_path, audio_path):
         completed = subprocess.run(
-            [ffprobe.as_posix(), '-v', 'error', '-count_frames',
-             '-show_streams', '-show_format',
-             '-of', 'json', str(path)],
-            check=True, capture_output=True, text=True, env=environment)
+            [
+                ffprobe.as_posix(),
+                "-v",
+                "error",
+                "-count_frames",
+                "-show_streams",
+                "-show_format",
+                "-of",
+                "json",
+                str(path),
+            ],
+            check=True,
+            capture_output=True,
+            text=True,
+            env=environment,
+        )
         try:
             value = json.loads(completed.stdout)
         except json.JSONDecodeError as error:
-            raise ValueError('packaged ffprobe returned invalid JSON') from error
+            raise ValueError("packaged ffprobe returned invalid JSON") from error
         if not isinstance(value, dict):
-            raise ValueError('packaged ffprobe result is not an object')
+            raise ValueError("packaged ffprobe result is not an object")
         documents.append(value)
     video, audio = documents
-    video_streams = video.get('streams')
-    audio_streams = audio.get('streams')
+    video_streams = video.get("streams")
+    audio_streams = audio.get("streams")
     if (
-        not isinstance(video_streams, list) or len(video_streams) != 1
-        or video_streams[0].get('codec_type') != 'video'
-        or video_streams[0].get('codec_name') != 'rawvideo'
-        or video_streams[0].get('width') != 2
-        or video_streams[0].get('height') != 2
-        or video_streams[0].get('pix_fmt') != 'bgr24'
-        or video_streams[0].get('r_frame_rate') != '25/1'
-        or video_streams[0].get('avg_frame_rate') != '25/1'
-        or video_streams[0].get('time_base') != '1/25'
-        or video_streams[0].get('nb_frames') not in (None, '1')
-        or video_streams[0].get('nb_read_frames') != '1'
-        or not _duration_is(video_streams[0].get('duration'), 0.04)
-        or not isinstance(video.get('format'), dict)
-        or video['format'].get('format_name') != 'avi'
-        or not _duration_is(video['format'].get('duration'), 0.04)
+        not isinstance(video_streams, list)
+        or len(video_streams) != 1
+        or video_streams[0].get("codec_type") != "video"
+        or video_streams[0].get("codec_name") != "rawvideo"
+        or video_streams[0].get("width") != 2
+        or video_streams[0].get("height") != 2
+        or video_streams[0].get("pix_fmt") != "bgr24"
+        or video_streams[0].get("r_frame_rate") != "25/1"
+        or video_streams[0].get("avg_frame_rate") != "25/1"
+        or video_streams[0].get("time_base") != "1/25"
+        or video_streams[0].get("nb_frames") not in (None, "1")
+        or video_streams[0].get("nb_read_frames") != "1"
+        or not _duration_is(video_streams[0].get("duration"), 0.04)
+        or not isinstance(video.get("format"), dict)
+        or video["format"].get("format_name") != "avi"
+        or not _duration_is(video["format"].get("duration"), 0.04)
     ):
-        raise ValueError('packaged ffprobe video metadata is invalid')
+        raise ValueError("packaged ffprobe video metadata is invalid")
     if (
-        not isinstance(audio_streams, list) or len(audio_streams) != 1
-        or audio_streams[0].get('codec_type') != 'audio'
-        or audio_streams[0].get('codec_name') != 'pcm_s16le'
-        or audio_streams[0].get('sample_rate') != '48000'
-        or audio_streams[0].get('channels') != 1
-        or float(audio_streams[0].get('duration', '0')) <= 0
-        or not isinstance(audio.get('format'), dict)
-        or audio['format'].get('format_name') != 'wav'
+        not isinstance(audio_streams, list)
+        or len(audio_streams) != 1
+        or audio_streams[0].get("codec_type") != "audio"
+        or audio_streams[0].get("codec_name") != "pcm_s16le"
+        or audio_streams[0].get("sample_rate") != "48000"
+        or audio_streams[0].get("channels") != 1
+        or float(audio_streams[0].get("duration", "0")) <= 0
+        or not isinstance(audio.get("format"), dict)
+        or audio["format"].get("format_name") != "wav"
     ):
-        raise ValueError('packaged ffprobe audio metadata is invalid')
+        raise ValueError("packaged ffprobe audio metadata is invalid")
 
 
 def prepare_hdr_fixture(repo_root: Path, destination: Path) -> None:
-    source=repo_root/'tests/fixtures'
-    lock=json.loads((source/'hdr-fixtures.lock.json').read_text(encoding='utf-8'))
-    if lock.get('schemaVersion')!=1 or len(lock.get('files',[]))!=1:raise ValueError('invalid HDR fixture lock')
-    entry=lock['files'][0]
-    if entry.get('name')!='hdr10plus.json':raise ValueError('unsafe HDR fixture name')
-    path=source/entry['name']
-    if path.is_symlink() or not path.is_file():raise ValueError('invalid HDR fixture source')
-    data=path.read_bytes()
-    if len(data)!=entry.get('size') or hashlib.sha256(data).hexdigest()!=entry.get('sha256'):raise ValueError('HDR fixture content differs from lock')
-    destination.mkdir(parents=True,exist_ok=True)
-    (destination/entry['name']).write_bytes(data)
+    source = repo_root / "tests/fixtures"
+    lock = json.loads((source / "hdr-fixtures.lock.json").read_text(encoding="utf-8"))
+    if lock.get("schemaVersion") != 1 or len(lock.get("files", [])) != 1:
+        raise ValueError("invalid HDR fixture lock")
+    entry = lock["files"][0]
+    if entry.get("name") != "hdr10plus.json":
+        raise ValueError("unsafe HDR fixture name")
+    path = source / entry["name"]
+    if path.is_symlink() or not path.is_file():
+        raise ValueError("invalid HDR fixture source")
+    data = path.read_bytes()
+    if len(data) != entry.get("size") or hashlib.sha256(data).hexdigest() != entry.get(
+        "sha256"
+    ):
+        raise ValueError("HDR fixture content differs from lock")
+    destination.mkdir(parents=True, exist_ok=True)
+    (destination / entry["name"]).write_bytes(data)
 
 
 def consumer_executable(build: Path, name: str) -> Path:
-    candidates=(build/'Release'/(name+'.exe'),build/(name+'.exe'),build/name)
-    executable=next((p for p in candidates if p.is_file()),None)
-    if executable is None:raise RuntimeError('required CMake consumer was not produced: '+name)
+    candidates = (
+        build / "Release" / (name + ".exe"),
+        build / (name + ".exe"),
+        build / name,
+    )
+    executable = next((p for p in candidates if p.is_file()), None)
+    if executable is None:
+        raise RuntimeError("required CMake consumer was not produced: " + name)
     return executable
 
 
@@ -183,11 +207,19 @@ def verify_sdk_archive(archive: Path, repo_root: Path) -> dict[str, object]:
             require_matching_toolchain(manifest["toolchain"], discovered)
             powershell = _required_tool("powershell", environment)
             inspection_command = [
-                powershell, "-NoLogo", "-NoProfile", "-ExecutionPolicy", "Bypass",
-                "-File", str(repo_root / "scripts" / "platforms" / "windows" / "inspect.ps1"),
-                "-SdkRoot", str(sdk),
-                "-ExpectedPeCsv", ";".join(manifest["runtimeFiles"]),
-                "-ReportPath", str(inspection),
+                powershell,
+                "-NoLogo",
+                "-NoProfile",
+                "-ExecutionPolicy",
+                "Bypass",
+                "-File",
+                str(repo_root / "scripts" / "platforms" / "windows" / "inspect.ps1"),
+                "-SdkRoot",
+                str(sdk),
+                "-ExpectedPeCsv",
+                ";".join(manifest["runtimeFiles"]),
+                "-ReportPath",
+                str(inspection),
             ]
             ffprobe = sdk / "bin" / "ffprobe.exe"
         elif target_id == "macos-arm64":
@@ -196,10 +228,14 @@ def verify_sdk_archive(archive: Path, repo_root: Path) -> dict[str, object]:
             bash = _required_tool("bash", environment)
             macos_inspector = repo_root / "scripts/platforms/macos/inspect.sh"
             inspection_command = [
-                bash, str(macos_inspector),
-                "--sdk-root", str(sdk),
-                "--expected-macho-csv", ";".join(manifest["runtimeFiles"]),
-                "--report-path", str(inspection),
+                bash,
+                str(macos_inspector),
+                "--sdk-root",
+                str(sdk),
+                "--expected-macho-csv",
+                ";".join(manifest["runtimeFiles"]),
+                "--report-path",
+                str(inspection),
             ]
             ffprobe = sdk / "bin" / "ffprobe"
         else:
@@ -227,7 +263,11 @@ def verify_sdk_archive(archive: Path, repo_root: Path) -> dict[str, object]:
         build = work / "consumer-build"
         subprocess.run(
             [
-                cmake, "-S", str(repo_root / "tests" / "consumer"), "-B", str(build),
+                cmake,
+                "-S",
+                str(repo_root / "tests" / "consumer"),
+                "-B",
+                str(build),
                 f"-DLarixFFmpegSDK_DIR={sdk / 'lib' / 'cmake' / 'LarixFFmpegSDK'}",
             ],
             check=True,
@@ -248,19 +288,41 @@ def verify_sdk_archive(archive: Path, repo_root: Path) -> dict[str, object]:
             raise RuntimeError("CMake consumer executable was not produced")
         subprocess.run([str(executable), str(video)], check=True, env=environment)
         prepare_hdr_fixture(repo_root, fixtures)
-        extension='.dll' if target_id=='windows-x64-msvc' else '.dylib'
-        candidates=(build/'Release'/('libx265_main12'+extension),build/('libx265_main12'+extension))
-        sentinel=next((p for p in candidates if p.is_file()),None)
-        if sentinel is None:raise RuntimeError('foreign encoder isolation fixture was not built')
-        foreign=fixtures/'foreign-libraries';foreign.mkdir()
-        for name in ['libx265_main12','libx265']:
-            shutil.copyfile(sentinel,foreign/(name+extension))
-        isolated_environment=dict(environment)
-        search_key='PATH' if target_id=='windows-x64-msvc' else 'DYLD_LIBRARY_PATH'
-        isolated_environment[search_key]=str(foreign)+os.pathsep+isolated_environment.get(search_key,'')
-        subprocess.run([str(consumer_executable(build,'larix_ffmpeg_encoding')),str(manifest['licenseProfile']),'.'],check=True,env=isolated_environment,cwd=fixtures)
-        if (fixtures/'larix-unexpected-x265-load.marker').exists():raise ValueError('SDK loaded an unpinned external x265 library')
-        subprocess.run([str(consumer_executable(build,'larix_ffmpeg_hdr'))],check=True,env=environment,cwd=fixtures)
+        extension = ".dll" if target_id == "windows-x64-msvc" else ".dylib"
+        candidates = (
+            build / "Release" / ("libx265_main12" + extension),
+            build / ("libx265_main12" + extension),
+        )
+        sentinel = next((p for p in candidates if p.is_file()), None)
+        if sentinel is None:
+            raise RuntimeError("foreign encoder isolation fixture was not built")
+        foreign = fixtures / "foreign-libraries"
+        foreign.mkdir()
+        for name in ["libx265_main12", "libx265"]:
+            shutil.copyfile(sentinel, foreign / (name + extension))
+        isolated_environment = dict(environment)
+        search_key = "PATH" if target_id == "windows-x64-msvc" else "DYLD_LIBRARY_PATH"
+        isolated_environment[search_key] = (
+            str(foreign) + os.pathsep + isolated_environment.get(search_key, "")
+        )
+        subprocess.run(
+            [
+                str(consumer_executable(build, "larix_ffmpeg_encoding")),
+                str(manifest["licenseProfile"]),
+                ".",
+            ],
+            check=True,
+            env=isolated_environment,
+            cwd=fixtures,
+        )
+        if (fixtures / "larix-unexpected-x265-load.marker").exists():
+            raise ValueError("SDK loaded an unpinned external x265 library")
+        subprocess.run(
+            [str(consumer_executable(build, "larix_ffmpeg_hdr"))],
+            check=True,
+            env=environment,
+            cwd=fixtures,
+        )
         return manifest
 
 
